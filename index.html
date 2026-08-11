@@ -15,8 +15,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .header-top > div:first-child { flex: 1; }
 .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; }
 .logout-btn:hover { background: rgba(255,255,255,0.3); }
-.settings-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; margin-right: 8px; }
-.settings-btn:hover { background: rgba(255,255,255,0.3); }
 .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 .card h2 { font-size: 16px; margin-bottom: 12px; color: #34495e; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
@@ -104,18 +102,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .retry-btn { background: white; color: #e74c3c; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 .retry-btn:hover { background: #f0f0f0; }
 .retry-count { font-size: 12px; opacity: 0.8; margin-top: 16px; }
-.settings-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 20px; }
-.settings-modal.show { display: flex; }
-.settings-content { background: white; border-radius: 16px; padding: 30px; max-width: 400px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-.settings-content h2 { font-size: 18px; color: #2c3e50; margin-bottom: 16px; }
-.settings-input { width: 100%; padding: 12px 16px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; margin-bottom: 12px; }
-.settings-input:focus { border-color: #667eea; }
-.settings-hint { font-size: 12px; color: #636e72; margin-bottom: 20px; line-height: 1.5; }
-.settings-actions { display: flex; gap: 12px; }
-.settings-save { flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
-.settings-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
-.settings-cancel { padding: 12px 20px; background: #dfe6e9; color: #636e72; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; }
-.settings-cancel:hover { background: #b2bec3; }
 @media (max-width: 600px) {
     #app { padding: 12px; }
     .header { padding: 16px; }
@@ -130,86 +116,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 <body>
 <div id="app"></div>
 
-<!-- Settings Modal -->
-<div id="settingsModal" class="settings-modal">
-    <div class="settings-content">
-        <h2>⚙️ 服务器设置</h2>
-        <input type="text" id="serverUrlInput" class="settings-input" placeholder="服务器地址 (例如: https://xxxx.cpolar.top)">
-        <div class="settings-hint">
-            如果前端托管在 GitHub Pages 等静态托管服务，需要在此填写后端服务器的地址。<br>
-            留空则使用当前页面地址作为服务器（适合同源部署）。<br><br>
-            <strong>注意：</strong>跨域访问需要后端服务器支持 CORS。
-        </div>
-        <div class="settings-actions">
-            <button class="settings-cancel" onclick="closeSettings()">取消</button>
-            <button class="settings-save" onclick="saveSettings()">保存</button>
-        </div>
-    </div>
-</div>
-
-<!-- Connection Lost Overlay -->
 <div id="connectionLost" class="connection-lost">
     <h2>⚠️ 连接已断开</h2>
     <p>无法连接到文件传输服务器<br>服务器可能已停止或电脑已离线</p>
     <button class="retry-btn" onclick="reconnect()">🔄 重新连接</button>
     <div class="retry-count" id="retryCount"></div>
-    <button class="retry-btn" style="margin-top:12px; background:rgba(255,255,255,0.2); color:white;" onclick="openSettings()">⚙️ 服务器设置</button>
 </div>
 
 <script>
-// ============== Server URL Configuration ==============
-const DEFAULT_API_BASE = 'https://d94f6dc.r29.cpolar.top';
-
-function getApiBase() {
-    return localStorage.getItem('ft_server_url') || DEFAULT_API_BASE;
-}
-
-function setApiBase(url) {
-    if (url && url !== DEFAULT_API_BASE) {
-        localStorage.setItem('ft_server_url', url.replace(/\/+$/, ''));
-    } else {
-        localStorage.removeItem('ft_server_url');
-    }
-}
+const API_BASE = 'https://d94f6dc.r29.cpolar.top';
 
 function api(path) {
-    const base = getApiBase();
-    if (base) {
-        return base + path;
-    }
-    return path;
+    return API_BASE + path;
 }
 
-function openSettings() {
-    const current = getApiBase();
-    document.getElementById('serverUrlInput').value = current === DEFAULT_API_BASE ? '' : current;
-    document.getElementById('settingsModal').classList.add('show');
-}
-
-function closeSettings() {
-    document.getElementById('settingsModal').classList.remove('show');
-}
-
-function saveSettings() {
-    const url = document.getElementById('serverUrlInput').value.trim();
-    setApiBase(url);
-    closeSettings();
-    showToast('✅ 服务器地址已保存');
-    // Reconnect with new settings
-    hideConnectionLost();
-    if (currentPath === '/') {
-        loadDrives();
-    } else {
-        loadFileList(currentPath);
-    }
-}
-
-// Close modal on background click
-document.getElementById('settingsModal').addEventListener('click', function(e) {
-    if (e.target === this) closeSettings();
-});
-
-// ============== App State ==============
 let currentPath = '/';
 let serverInfo = {};
 let drivesCache = [];
@@ -222,7 +142,6 @@ let showSystem = false;
 let tasks = [];
 let taskIdCounter = 0;
 
-// ============== Toast & Connection ==============
 function showToast(msg) {
     const toast = document.createElement('div');
     toast.className = 'toast';
@@ -291,7 +210,6 @@ async function reconnect() {
     await checkConnection();
 }
 
-// ============== Utils ==============
 function formatSize(bytes) {
     if (bytes === 0) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -306,7 +224,6 @@ function formatDriveSize(bytes) {
     return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
 }
 
-// ============== API Calls ==============
 async function loadInfo() {
     try {
         const resp = await fetch(api('/api/info'), { credentials: 'include' });
@@ -350,9 +267,8 @@ function copyUrl(url) {
     });
 }
 
-// ============== Rendering ==============
 function renderDrives() {
-    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><div><button class="settings-btn" onclick="openSettings()">⚙️</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><div><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
     
@@ -389,7 +305,7 @@ function renderConnectionInfo() {
     let html = '';
     const lanUrl = serverInfo.lanUrl || '';
     const tunnelUrl = serverInfo.tunnelUrl || '';
-    const currentBase = getApiBase();
+    const currentBase = API_BASE;
     
     html += '<div class="conn-info">';
     html += '<div class="conn-info-title">🔗 连接方式</div>';
@@ -529,7 +445,7 @@ async function loadFileList(path) {
 }
 
 function renderFileList(data, path) {
-    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><div><button class="settings-btn" onclick="openSettings()">⚙️</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><div><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
     
@@ -772,14 +688,7 @@ function uploadFile(file) {
     xhr.send(formData);
 }
 
-// ============== Init ==============
 async function init() {
-    // Check if server URL is configured
-    const base = getApiBase();
-    if (base) {
-        console.log('Using server:', base);
-    }
-    
     checkSession();
     await loadInfo();
     loadDrives();

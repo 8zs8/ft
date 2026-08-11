@@ -23,12 +23,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .login-spinner.show { display: inline-block; }
 .login-spinner::after { content: ''; display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-.server-config { margin-top: 20px; padding-top: 20px; border-top: 1px solid #ecf0f1; }
-.server-config-title { font-size: 13px; color: #636e72; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
-.server-config-title a { color: #667eea; cursor: pointer; font-size: 12px; text-decoration: none; }
-.server-config-input { width: 100%; padding: 10px 12px; border: 2px solid #dfe6e9; border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.2s; }
-.server-config-input:focus { border-color: #667eea; }
-.server-config-hint { font-size: 11px; color: #b2bec3; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -41,79 +35,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
         <input type="password" id="password" class="login-input" placeholder="请输入密码" autocomplete="current-password" autofocus>
         <button type="submit" class="login-btn" id="loginBtn">登 录<span class="login-spinner" id="btnSpinner"></span></button>
     </form>
-    
-    <div class="server-config">
-        <div class="server-config-title">
-            <span>🖥️ 服务器地址</span>
-            <a id="toggleServerConfig" href="#">更改</a>
-        </div>
-        <div id="serverConfigPanel" style="display:none;">
-            <input type="text" id="serverUrl" class="server-config-input" placeholder="例如: https://xxxx.cpolar.top">
-            <div class="server-config-hint">留空则使用当前页面地址作为服务器</div>
-        </div>
-        <div id="serverUrlDisplay" class="server-config-hint" style="display:none;"></div>
-    </div>
-    
     <div class="login-footer">FileTransfer v2.0 · 安全传输</div>
 </div>
 
 <script>
-// Server URL configuration - hardcoded cpolar tunnel
-const DEFAULT_API_BASE = 'https://d94f6dc.r29.cpolar.top';
-
-function getApiBase() {
-    return localStorage.getItem('ft_server_url') || DEFAULT_API_BASE;
-}
-
-function setApiBase(url) {
-    if (url && url !== DEFAULT_API_BASE) {
-        localStorage.setItem('ft_server_url', url.replace(/\/+$/, ''));
-    } else {
-        localStorage.removeItem('ft_server_url');
-    }
-}
+const API_BASE = 'https://d94f6dc.r29.cpolar.top';
 
 function api(path) {
-    const base = getApiBase();
-    if (base) {
-        return base + path;
-    }
-    return path;
+    return API_BASE + path;
 }
-
-// Initialize server URL display
-(function initServerConfig() {
-    const saved = getApiBase();
-    const display = document.getElementById('serverUrlDisplay');
-    if (saved && saved !== DEFAULT_API_BASE) {
-        display.textContent = '当前: ' + saved;
-        display.style.display = 'block';
-    }
-    
-    document.getElementById('toggleServerConfig').addEventListener('click', function(e) {
-        e.preventDefault();
-        const panel = document.getElementById('serverConfigPanel');
-        const input = document.getElementById('serverUrl');
-        if (panel.style.display === 'none') {
-            panel.style.display = 'block';
-            input.value = saved === DEFAULT_API_BASE ? '' : saved;
-            input.focus();
-        } else {
-            panel.style.display = 'none';
-        }
-    });
-    
-    document.getElementById('serverUrl').addEventListener('change', function() {
-        setApiBase(this.value.trim());
-        const display = document.getElementById('serverUrlDisplay');
-        if (this.value.trim() && this.value.trim() !== DEFAULT_API_BASE) {
-            display.textContent = '当前: ' + this.value.trim();
-            display.style.display = 'block';
-        } else {
-            display.style.display = 'none';
-        }
-    });
-})();
 
 const form = document.getElementById('loginForm');
 const input = document.getElementById('password');
@@ -150,7 +80,7 @@ form.addEventListener('submit', async (e) => {
         input.value = '';
         input.focus();
     } catch(err) {
-        errorBox.textContent = '网络错误，请检查服务器地址';
+        errorBox.textContent = '网络错误，请检查服务器状态';
         errorBox.classList.add('show');
     } finally {
         btn.disabled = false;
