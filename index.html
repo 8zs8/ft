@@ -8,19 +8,21 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f7fa; color: #2c3e50; min-height: 100vh; }
 #app { max-width: 800px; margin: 0 auto; padding: 20px; }
-.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; position: relative; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%; color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; position: relative; }
 .header h1 { font-size: 22px; margin-bottom: 8px; }
 .header p { opacity: 0.9; font-size: 14px; }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
 .header-top > div:first-child { flex: 1; }
 .logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; }
 .logout-btn:hover { background: rgba(255,255,255,0.3); }
+.settings-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; margin-right: 8px; }
+.settings-btn:hover { background: rgba(255,255,255,0.3); }
 .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 .card h2 { font-size: 16px; margin-bottom: 12px; color: #34495e; }
 .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 100%; }
+.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%; color: white; width: 100%; }
 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
-.btn-upload { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; width: 100%; margin-top: 12px; }
+.btn-upload { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%; color: white; width: 100%; margin-top: 12px; }
 .file-list { list-style: none; }
 .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #ecf0f1; transition: background 0.2s; }
 .file-item:hover { background: #f8f9fa; }
@@ -102,6 +104,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .retry-btn { background: white; color: #e74c3c; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
 .retry-btn:hover { background: #f0f0f0; }
 .retry-count { font-size: 12px; opacity: 0.8; margin-top: 16px; }
+.settings-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 20px; }
+.settings-modal.show { display: flex; }
+.settings-content { background: white; border-radius: 16px; padding: 30px; max-width: 400px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.settings-content h2 { font-size: 18px; color: #2c3e50; margin-bottom: 16px; }
+.settings-input { width: 100%; padding: 12px 16px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s; margin-bottom: 12px; }
+.settings-input:focus { border-color: #667eea; }
+.settings-hint { font-size: 12px; color: #636e72; margin-bottom: 20px; line-height: 1.5; }
+.settings-actions { display: flex; gap: 12px; }
+.settings-save { flex: 1; padding: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.settings-save:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+.settings-cancel { padding: 12px 20px; background: #dfe6e9; color: #636e72; border: none; border-radius: 10px; font-size: 14px; cursor: pointer; }
+.settings-cancel:hover { background: #b2bec3; }
 @media (max-width: 600px) {
     #app { padding: 12px; }
     .header { padding: 16px; }
@@ -116,27 +130,96 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 <body>
 <div id="app"></div>
 
+<!-- Settings Modal -->
+<div id="settingsModal" class="settings-modal">
+    <div class="settings-content">
+        <h2>⚙️ 服务器设置</h2>
+        <input type="text" id="serverUrlInput" class="settings-input" placeholder="服务器地址 (例如: https://xxxx.cpolar.top)">
+        <div class="settings-hint">
+            如果前端托管在 GitHub Pages 等静态托管服务，需要在此填写后端服务器的地址。<br>
+            留空则使用当前页面地址作为服务器（适合同源部署）。<br><br>
+            <strong>注意：</strong>跨域访问需要后端服务器支持 CORS。
+        </div>
+        <div class="settings-actions">
+            <button class="settings-cancel" onclick="closeSettings()">取消</button>
+            <button class="settings-save" onclick="saveSettings()">保存</button>
+        </div>
+    </div>
+</div>
+
 <!-- Connection Lost Overlay -->
 <div id="connectionLost" class="connection-lost">
     <h2>⚠️ 连接已断开</h2>
     <p>无法连接到文件传输服务器<br>服务器可能已停止或电脑已离线</p>
     <button class="retry-btn" onclick="reconnect()">🔄 重新连接</button>
     <div class="retry-count" id="retryCount"></div>
+    <button class="retry-btn" style="margin-top:12px; background:rgba(255,255,255,0.2); color:white;" onclick="openSettings()">⚙️ 服务器设置</button>
 </div>
 
 <script>
+// ============== Server URL Configuration ==============
+function getApiBase() {
+    return localStorage.getItem('ft_server_url') || '';
+}
+
+function setApiBase(url) {
+    if (url) {
+        localStorage.setItem('ft_server_url', url.replace(/\/+$/, ''));
+    } else {
+        localStorage.removeItem('ft_server_url');
+    }
+}
+
+function api(path) {
+    const base = getApiBase();
+    if (base) {
+        return base + path;
+    }
+    return path;
+}
+
+function openSettings() {
+    document.getElementById('serverUrlInput').value = getApiBase();
+    document.getElementById('settingsModal').classList.add('show');
+}
+
+function closeSettings() {
+    document.getElementById('settingsModal').classList.remove('show');
+}
+
+function saveSettings() {
+    const url = document.getElementById('serverUrlInput').value.trim();
+    setApiBase(url);
+    closeSettings();
+    showToast('✅ 服务器地址已保存');
+    // Reconnect with new settings
+    hideConnectionLost();
+    if (currentPath === '/') {
+        loadDrives();
+    } else {
+        loadFileList(currentPath);
+    }
+}
+
+// Close modal on background click
+document.getElementById('settingsModal').addEventListener('click', function(e) {
+    if (e.target === this) closeSettings();
+});
+
+// ============== App State ==============
 let currentPath = '/';
 let serverInfo = {};
 let drivesCache = [];
 let connectionCheckInterval = null;
 let connectionLostShown = false;
 let consecutiveFailures = 0;
-const MAX_FAILURES = 2; // Show warning after 2 consecutive failures
+const MAX_FAILURES = 2;
 let showHidden = false;
 let showSystem = false;
 let tasks = [];
 let taskIdCounter = 0;
 
+// ============== Toast & Connection ==============
 function showToast(msg) {
     const toast = document.createElement('div');
     toast.className = 'toast';
@@ -168,20 +251,18 @@ async function checkConnection() {
     try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3000);
-        const resp = await fetch('/api/info', { signal: controller.signal, cache: 'no-store' });
+        const resp = await fetch(api('/api/info'), { signal: controller.signal, cache: 'no-store', credentials: 'include' });
         clearTimeout(timeoutId);
         
         if (resp.status === 401) {
-            window.location.href = '/login';
+            window.location.href = 'login.html';
             return;
         }
         
         if (resp.ok) {
-            // Connection restored
             if (connectionLostShown) {
                 hideConnectionLost();
                 showToast('✅ 连接已恢复');
-                // Reload current view
                 if (currentPath === '/') {
                     loadDrives();
                 } else {
@@ -207,6 +288,7 @@ async function reconnect() {
     await checkConnection();
 }
 
+// ============== Utils ==============
 function formatSize(bytes) {
     if (bytes === 0) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
@@ -221,9 +303,10 @@ function formatDriveSize(bytes) {
     return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
 }
 
+// ============== API Calls ==============
 async function loadInfo() {
     try {
-        const resp = await fetch('/api/info');
+        const resp = await fetch(api('/api/info'), { credentials: 'include' });
         serverInfo = await resp.json();
     } catch(e) {
         console.error('Failed to load info:', e);
@@ -232,7 +315,7 @@ async function loadInfo() {
 
 async function loadDrives() {
     try {
-        const resp = await fetch('/api/drives');
+        const resp = await fetch(api('/api/drives'), { credentials: 'include' });
         drivesCache = await resp.json();
         renderDrives();
     } catch(e) {
@@ -240,12 +323,36 @@ async function loadDrives() {
     }
 }
 
+function logout() {
+    fetch(api('/api/logout'), { method: 'POST', credentials: 'include' }).then(() => {
+        window.location.href = 'login.html';
+    }).catch(() => {
+        window.location.href = 'login.html';
+    });
+}
+
+function checkSession() {
+    fetch(api('/api/info'), { cache: 'no-store', credentials: 'include' }).then(resp => {
+        if (resp.status === 401) {
+            window.location.href = 'login.html';
+        }
+    }).catch(() => {});
+}
+
+function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('✅ 已复制到剪贴板');
+    }).catch(() => {
+        showToast('❌ 复制失败，请手动复制');
+    });
+}
+
+// ============== Rendering ==============
 function renderDrives() {
-    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><div><button class="settings-btn" onclick="openSettings()">⚙️</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
     
-    // Options bar with checkboxes
     let optionsBar = '<div class="options-bar">' +
         '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
         '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
@@ -279,9 +386,17 @@ function renderConnectionInfo() {
     let html = '';
     const lanUrl = serverInfo.lanUrl || '';
     const tunnelUrl = serverInfo.tunnelUrl || '';
+    const currentBase = getApiBase();
     
     html += '<div class="conn-info">';
     html += '<div class="conn-info-title">🔗 连接方式</div>';
+    
+    if (currentBase) {
+        html += '<div class="conn-item">';
+        html += '<span class="conn-label">🖥️ 服务器</span>';
+        html += '<span class="conn-url" style="font-size:11px;">' + currentBase + '</span>';
+        html += '</div>';
+    }
     
     if (lanUrl) {
         html += '<div class="conn-item">';
@@ -303,7 +418,7 @@ function renderConnectionInfo() {
     
     if (tunnelUrl) {
         html += '<div class="qr-section">';
-        html += '<img class="qr-img" src="/api/qrcode?t=' + Date.now() + '" alt="QR Code">';
+        html += '<img class="qr-img" src="' + api('/api/qrcode') + '?t=' + Date.now() + '" alt="QR Code" crossorigin="anonymous">';
         html += '<div class="qr-hint">';
         html += '📱 扫描二维码访问<br>';
         html += '<strong>同一WiFi</strong>：使用局域网地址<br>';
@@ -313,30 +428,6 @@ function renderConnectionInfo() {
     }
     
     return html;
-}
-
-function logout() {
-    fetch('/api/logout', {method: 'POST'}).then(() => {
-        window.location.href = '/login';
-    }).catch(() => {
-        window.location.href = '/login';
-    });
-}
-
-function checkSession() {
-    fetch('/api/info', {cache: 'no-store'}).then(resp => {
-        if (resp.status === 401) {
-            window.location.href = '/login';
-        }
-    }).catch(() => {});
-}
-
-function copyUrl(url) {
-    navigator.clipboard.writeText(url).then(() => {
-        showToast('✅ 已复制到剪贴板');
-    }).catch(() => {
-        showToast('❌ 复制失败，请手动复制');
-    });
 }
 
 function updateTaskList() {
@@ -425,8 +516,8 @@ async function loadFileList(path) {
     document.getElementById('app').innerHTML = loadingHtml + '<div id="taskList"></div>';
     
     try {
-        const url = '/api/list?path=' + encodeURIComponent(path) + '&show_hidden=' + (showHidden ? '1' : '0') + '&show_system=' + (showSystem ? '1' : '0');
-        const resp = await fetch(url);
+        const url = api('/api/list') + '?path=' + encodeURIComponent(path) + '&show_hidden=' + (showHidden ? '1' : '0') + '&show_system=' + (showSystem ? '1' : '0');
+        const resp = await fetch(url, { credentials: 'include' });
         const data = await resp.json();
         renderFileList(data, path);
     } catch(e) {
@@ -435,7 +526,7 @@ async function loadFileList(path) {
 }
 
 function renderFileList(data, path) {
-    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><div><button class="settings-btn" onclick="openSettings()">⚙️</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
     
@@ -449,13 +540,11 @@ function renderFileList(data, path) {
     });
     breadcrumb += '</div>';
     
-    // Options bar with checkboxes
     let optionsBar = '<div class="options-bar">' +
         '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
         '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
         '</div>';
 
-    // Only disable upload for "My Computer" root
     const isRoot = path === '/';
     
     let uploadArea = '';
@@ -577,7 +666,10 @@ function downloadFile(path) {
     const filename = decodeURIComponent(path.split('/').pop());
     const task = addTask({ type: 'download', name: filename, status: 'downloading' });
     
-    fetch('/api/download?path=' + encodeURIComponent(path), { signal: (task.controller = new AbortController()).signal })
+    fetch(api('/api/download') + '?path=' + encodeURIComponent(path), { 
+        signal: (task.controller = new AbortController()).signal,
+        credentials: 'include'
+    })
         .then(resp => {
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const contentLength = parseInt(resp.headers.get('Content-Length') || '0');
@@ -672,15 +764,23 @@ function uploadFile(file) {
     xhr.onerror = () => { completeTask(task.id, false); };
     xhr.onabort = () => { removeTask(task.id); };
     
-    xhr.open('POST', '/api/upload');
+    xhr.open('POST', api('/api/upload'));
+    xhr.withCredentials = true;
     xhr.send(formData);
 }
 
+// ============== Init ==============
 async function init() {
+    // Check if server URL is configured
+    const base = getApiBase();
+    if (base) {
+        console.log('Using server:', base);
+    }
+    
+    checkSession();
     await loadInfo();
     loadDrives();
     
-    // Start connection monitoring (check every 5 seconds)
     connectionCheckInterval = setInterval(checkConnection, 5000);
 }
 
