@@ -4,7 +4,114 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>文件传输 - FileTransfer</title>
-<link rel="stylesheet" href="css/style.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f7fa; color: #2c3e50; min-height: 100vh; }
+#app { max-width: 800px; margin: 0 auto; padding: 20px; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; position: relative; }
+.header h1 { font-size: 22px; margin-bottom: 8px; }
+.header p { opacity: 0.9; font-size: 14px; }
+.header-top { display: flex; justify-content: space-between; align-items: flex-start; }
+.header-top > div:first-child { flex: 1; }
+.logout-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; }
+.logout-btn:hover { background: rgba(255,255,255,0.3); }
+.card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.card h2 { font-size: 16px; margin-bottom: 12px; color: #34495e; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; width: 100%; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
+.btn-upload { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; width: 100%; margin-top: 12px; }
+.file-list { list-style: none; }
+.file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #ecf0f1; transition: background 0.2s; }
+.file-item:hover { background: #f8f9fa; }
+.file-item:last-child { border-bottom: none; }
+.file-info { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.file-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.icon-folder { background: #ffeaa7; }
+.icon-file { background: #dfe6e9; }
+.icon-drive { background: #74b9ff; }
+.file-name { font-size: 14px; color: #2c3e50; word-break: break-all; }
+.file-meta { font-size: 12px; color: #95a5a6; margin-top: 2px; }
+.file-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.action-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+.action-download { background: #667eea; color: white; }
+.action-download:hover { background: #5a6fd8; }
+.action-navigate { background: #fdcb6e; color: #2c3e50; }
+.action-navigate:hover { background: #f5b041; }
+.breadcrumb { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.breadcrumb-item { padding: 6px 12px; background: white; border-radius: 6px; cursor: pointer; font-size: 13px; color: #667eea; border: none; }
+.breadcrumb-sep { color: #bdc3c7; }
+.options-bar { display: flex; gap: 16px; margin-bottom: 12px; align-items: center; flex-wrap: wrap; }
+.option-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #667eea; background: white; padding: 6px 12px; border-radius: 6px; cursor: pointer; user-select: none; }
+.option-label input { margin: 0; cursor: pointer; }
+.drive-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.drive-item { background: #f8f9fa; border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; border: 2px solid transparent; }
+.drive-item:hover { background: #e8f4fd; border-color: #74b9ff; }
+.drive-icon { font-size: 32px; margin-bottom: 8px; }
+.drive-name { font-size: 14px; font-weight: 600; color: #2c3e50; margin-bottom: 4px; word-break: break-all; }
+.drive-info { font-size: 12px; color: #95a5a6; }
+.drive-bar { width: 100%; height: 4px; background: #ecf0f1; border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.drive-bar-fill { height: 100%; background: linear-gradient(90deg, #00b894, #00cec9); }
+.upload-area { border: 2px dashed #dcdde1; border-radius: 12px; padding: 40px; text-align: center; transition: all 0.3s; cursor: pointer; }
+.upload-area.dragover { border-color: #667eea; background: #f0f3ff; }
+.upload-icon { font-size: 48px; margin-bottom: 12px; }
+.upload-text { color: #636e72; }
+.progress-bar { width: 100%; height: 8px; background: #ecf0f1; border-radius: 4px; overflow: hidden; margin-top: 12px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 4px; transition: width 0.3s; }
+.progress-fill.upload { background: linear-gradient(90deg, #11998e, #38ef7d); }
+.progress-fill.download { background: linear-gradient(90deg, #667eea, #764ba2); }
+.progress-text { font-size: 12px; color: #636e72; margin-top: 6px; }
+.loading-spinner { display: flex; justify-content: center; align-items: center; padding: 40px; }
+.spinner { width: 40px; height: 40px; border: 4px solid #ecf0f1; border-top-color: #667eea; border-radius: 50%; animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.upload-disabled { text-align: center; padding: 24px; color: #95a5a6; }
+.task-list { margin-top: 12px; }
+.task-item { display: flex; align-items: center; gap: 12px; padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 8px; }
+.task-info { flex: 1; min-width: 0; }
+.task-name { font-size: 13px; color: #2c3e50; word-break: break-all; }
+.task-progress-bar { width: 100%; height: 6px; background: #dfe6e9; border-radius: 3px; overflow: hidden; margin-top: 4px; }
+.task-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; transition: width 0.3s; }
+.task-progress-fill.upload { background: linear-gradient(90deg, #11998e, #38ef7d); }
+.task-progress-fill.download { background: linear-gradient(90deg, #0984e3, #74b9ff); }
+.task-status { font-size: 11px; color: #95a5a6; margin-top: 2px; }
+.task-status.done { color: #00b894; }
+.task-status.error { color: #d63031; }
+.task-cancel { background: #dfe6e9; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 12px; color: #636e72; }
+.task-cancel:hover { background: #b2bec3; }
+.toast { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); padding: 12px 24px; background: #2d3436; color: white; border-radius: 8px; z-index: 1000; opacity: 0; transition: opacity 0.3s; }
+.toast.show { opacity: 1; }
+.empty { text-align: center; padding: 40px; color: #b2bec3; }
+.hidden { display: none; }
+.permission-denied { color: #e74c3c; font-size: 12px; padding: 8px; background: #ffeaa7; border-radius: 6px; margin-top: 8px; }
+.conn-info { background: rgba(255,255,255,0.15); border-radius: 10px; padding: 12px; margin-top: 12px; }
+.conn-info-title { font-size: 13px; opacity: 0.9; margin-bottom: 8px; }
+.conn-item { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
+.conn-label { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; }
+.conn-url { flex: 1; font-family: monospace; word-break: break-all; opacity: 0.95; }
+.conn-copy { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
+.conn-copy:hover { background: rgba(255,255,255,0.3); }
+.qr-section { display: flex; align-items: center; gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); }
+.qr-img { width: 100px; height: 100px; border-radius: 8px; background: white; padding: 4px; }
+.qr-hint { font-size: 12px; opacity: 0.9; line-height: 1.5; }
+.back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; color: #667eea; margin-right: 8px; }
+.back-btn:hover { background: #f0f3ff; }
+.connection-lost { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.95); color: white; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 9999; padding: 20px; text-align: center; }
+.connection-lost.show { display: flex; }
+.connection-lost h2 { font-size: 24px; margin-bottom: 16px; }
+.connection-lost p { font-size: 14px; margin-bottom: 24px; opacity: 0.9; }
+.retry-btn { background: white; color: #e74c3c; border: none; padding: 12px 32px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; }
+.retry-btn:hover { background: #f0f0f0; }
+.retry-count { font-size: 12px; opacity: 0.8; margin-top: 16px; }
+@media (max-width: 600px) {
+    #app { padding: 12px; }
+    .header { padding: 16px; }
+    .header h1 { font-size: 18px; }
+    .file-actions { flex-direction: column; }
+    .action-btn { width: 100%; }
+    .qr-section { flex-direction: column; text-align: center; }
+    .drive-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -17,6 +124,567 @@
     <div class="retry-count" id="retryCount"></div>
 </div>
 
-<script src="js/app.js"></script>
+<script>
+let currentPath = '/';
+let serverInfo = {};
+let drivesCache = [];
+let connectionCheckInterval = null;
+let connectionLostShown = false;
+let consecutiveFailures = 0;
+const MAX_FAILURES = 2; // Show warning after 2 consecutive failures
+let showHidden = false;
+let showSystem = false;
+let tasks = [];
+let taskIdCounter = 0;
+
+function showToast(msg) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = msg;
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('show'));
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 2000);
+}
+
+function showConnectionLost() {
+    if (!connectionLostShown) {
+        connectionLostShown = true;
+        document.getElementById('connectionLost').classList.add('show');
+    }
+}
+
+function hideConnectionLost() {
+    if (connectionLostShown) {
+        connectionLostShown = false;
+        document.getElementById('connectionLost').classList.remove('show');
+        consecutiveFailures = 0;
+    }
+}
+
+async function checkConnection() {
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const resp = await fetch('/api/info', { signal: controller.signal, cache: 'no-store' });
+        clearTimeout(timeoutId);
+        
+        if (resp.status === 401) {
+            window.location.href = '/login';
+            return;
+        }
+        
+        if (resp.ok) {
+            // Connection restored
+            if (connectionLostShown) {
+                hideConnectionLost();
+                showToast('✅ 连接已恢复');
+                // Reload current view
+                if (currentPath === '/') {
+                    loadDrives();
+                } else {
+                    loadFileList(currentPath);
+                }
+            }
+            consecutiveFailures = 0;
+        } else {
+            throw new Error('Server returned ' + resp.status);
+        }
+    } catch (e) {
+        consecutiveFailures++;
+        document.getElementById('retryCount').textContent = '已尝试 ' + consecutiveFailures + ' 次';
+        if (consecutiveFailures >= MAX_FAILURES) {
+            showConnectionLost();
+        }
+    }
+}
+
+async function reconnect() {
+    hideConnectionLost();
+    showToast('🔄 正在重新连接...');
+    await checkConnection();
+}
+
+function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
+}
+
+function formatDriveSize(bytes) {
+    if (!bytes) return '';
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + units[i];
+}
+
+async function loadInfo() {
+    try {
+        const resp = await fetch('/api/info');
+        serverInfo = await resp.json();
+    } catch(e) {
+        console.error('Failed to load info:', e);
+    }
+}
+
+async function loadDrives() {
+    try {
+        const resp = await fetch('/api/drives');
+        drivesCache = await resp.json();
+        renderDrives();
+    } catch(e) {
+        showToast('加载驱动器列表失败');
+    }
+}
+
+function renderDrives() {
+    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    header += renderConnectionInfo();
+    header += '</div>';
+    
+    // Options bar with checkboxes
+    let optionsBar = '<div class="options-bar">' +
+        '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
+        '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
+        '</div>';
+    
+    let content = '<div class="card"><h2>💾 选择驱动器</h2>';
+    if (drivesCache.length === 0) {
+        content += '<div class="empty">没有找到可用的驱动器</div>';
+    } else {
+        content += '<div class="drive-grid">';
+        drivesCache.forEach(drive => {
+            const usedPercent = drive.total > 0 ? ((drive.total - drive.free) / drive.total * 100) : 0;
+            const icon = drive.type === '固定驱动器' ? '💽' : drive.type === '可移动驱动器' ? '💾' : drive.type === '光盘驱动器' ? '💿' : drive.type === '远程驱动器' ? '🌐' : '📀';
+            const label = drive.label ? ` (${drive.label})` : '';
+            content += '<div class="drive-item" onclick="navigateTo(\'' + drive.path.replace(/\\/g, '/') + '\')">' +
+                '<div class="drive-icon">' + icon + '</div>' +
+                '<div class="drive-name">' + drive.letter + ':' + label + '</div>' +
+                '<div class="drive-info">' + drive.type + '</div>' +
+                '<div class="drive-info">总容量: ' + formatDriveSize(drive.total) + '</div>' +
+                '<div class="drive-bar"><div class="drive-bar-fill" style="width:' + usedPercent + '%"></div></div>' +
+                '</div>';
+        });
+        content += '</div>';
+    }
+    content += '</div>';
+    
+    document.getElementById('app').innerHTML = header + optionsBar + content + '<div id="taskList"></div>';
+}
+
+function renderConnectionInfo() {
+    let html = '';
+    const lanUrl = serverInfo.lanUrl || '';
+    const tunnelUrl = serverInfo.tunnelUrl || '';
+    
+    html += '<div class="conn-info">';
+    html += '<div class="conn-info-title">🔗 连接方式</div>';
+    
+    if (lanUrl) {
+        html += '<div class="conn-item">';
+        html += '<span class="conn-label">局域网</span>';
+        html += '<span class="conn-url" onclick="copyUrl(\'' + lanUrl + '\')" style="cursor:pointer">' + lanUrl + '</span>';
+        html += '<button class="conn-copy" onclick="copyUrl(\'' + lanUrl + '\')">复制</button>';
+        html += '</div>';
+    }
+    
+    if (tunnelUrl) {
+        html += '<div class="conn-item">';
+        html += '<span class="conn-label">🌐 外网</span>';
+        html += '<span class="conn-url" onclick="copyUrl(\'' + tunnelUrl + '\')" style="cursor:pointer">' + tunnelUrl + '</span>';
+        html += '<button class="conn-copy" onclick="copyUrl(\'' + tunnelUrl + '\')">复制</button>';
+        html += '</div>';
+    }
+    
+    html += '</div>';
+    
+    if (tunnelUrl) {
+        html += '<div class="qr-section">';
+        html += '<img class="qr-img" src="/api/qrcode?t=' + Date.now() + '" alt="QR Code">';
+        html += '<div class="qr-hint">';
+        html += '📱 扫描二维码访问<br>';
+        html += '<strong>同一WiFi</strong>：使用局域网地址<br>';
+        html += '<strong>不同网络</strong>：使用外网隧道地址';
+        html += '</div>';
+        html += '</div>';
+    }
+    
+    return html;
+}
+
+function logout() {
+    fetch('/api/logout', {method: 'POST'}).then(() => {
+        window.location.href = '/login';
+    }).catch(() => {
+        window.location.href = '/login';
+    });
+}
+
+function checkSession() {
+    fetch('/api/info', {cache: 'no-store'}).then(resp => {
+        if (resp.status === 401) {
+            window.location.href = '/login';
+        }
+    }).catch(() => {});
+}
+
+function copyUrl(url) {
+    navigator.clipboard.writeText(url).then(() => {
+        showToast('✅ 已复制到剪贴板');
+    }).catch(() => {
+        showToast('❌ 复制失败，请手动复制');
+    });
+}
+
+function updateTaskList() {
+    const container = document.getElementById('taskList');
+    if (!container) return;
+    const activeTasks = tasks.filter(t => t.status === 'uploading' || t.status === 'downloading');
+    if (activeTasks.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+    let html = '<div class="card" style="padding:12px; margin-bottom:16px;"><h2 style="font-size:14px; margin-bottom:8px; color:#34495e;">📋 进行中的任务</h2><div class="task-list">';
+    for (const task of activeTasks) {
+        const percent = Math.round(task.progress);
+        const sizeInfo = task.totalSize > 0 ? formatSize(task.loaded) + ' / ' + formatSize(task.totalSize) : formatSize(task.loaded);
+        const speedInfo = task.speed > 0 ? ' | ' + formatSize(task.speed) + '/s' : '';
+        html += '<div class="task-item">' +
+            '<div class="task-info">' +
+                '<div class="task-name">' + escapeHtml(task.name) + '</div>' +
+                '<div class="task-progress-bar"><div class="task-progress-fill ' + task.type + '" style="width:' + percent + '%"></div></div>' +
+                '<div class="task-status">' + percent + '% - ' + sizeInfo + speedInfo + '</div>' +
+            '</div>' +
+            '<button class="task-cancel" onclick="cancelTask(' + task.id + ')">取消</button>' +
+        '</div>';
+    }
+    html += '</div></div>';
+    container.innerHTML = html;
+}
+
+function cancelTask(taskId) {
+    const task = tasks.find(t => t.id === taskId);
+    if (task && task.xhr) { task.xhr.abort(); }
+    if (task && task.controller) { task.controller.abort(); }
+    task.status = 'cancelled';
+    updateTaskList();
+}
+
+function addTask(task) {
+    task.id = ++taskIdCounter;
+    task.loaded = 0;
+    task.totalSize = task.size || 0;
+    task.progress = 0;
+    task.speed = 0;
+    task.lastLoaded = 0;
+    task.lastTime = Date.now();
+    tasks.push(task);
+    updateTaskList();
+    return task;
+}
+
+function updateTask(taskId, loaded, total) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const now = Date.now();
+    const elapsed = (now - task.lastTime) / 1000;
+    if (elapsed >= 0.5) {
+        const delta = loaded - task.lastLoaded;
+        task.speed = delta / elapsed;
+        task.lastLoaded = loaded;
+        task.lastTime = now;
+    }
+    task.loaded = loaded;
+    if (total > 0) { task.progress = (loaded / total) * 100; }
+    updateTaskList();
+}
+
+function completeTask(taskId, success) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    task.status = success ? 'done' : 'error';
+    updateTaskList();
+    if (success) {
+        showToast('✅ ' + (task.type === 'upload' ? '上传' : '下载') + '完成: ' + task.name);
+    } else {
+        showToast('❌ ' + (task.type === 'upload' ? '上传' : '下载') + '失败: ' + task.name);
+    }
+    setTimeout(() => { tasks = tasks.filter(t => t.id !== taskId); updateTaskList(); }, 3000);
+}
+
+function removeTask(taskId) {
+    tasks = tasks.filter(t => t.id !== taskId);
+    updateTaskList();
+}
+
+async function loadFileList(path) {
+    const loadingHtml = '<div class="card"><div class="loading-spinner"><div class="spinner"></div></div><div style="text-align:center; color:#636e72; font-size:13px;">正在加载文件列表...</div></div>';
+    document.getElementById('app').innerHTML = loadingHtml + '<div id="taskList"></div>';
+    
+    try {
+        const url = '/api/list?path=' + encodeURIComponent(path) + '&show_hidden=' + (showHidden ? '1' : '0') + '&show_system=' + (showSystem ? '1' : '0');
+        const resp = await fetch(url);
+        const data = await resp.json();
+        renderFileList(data, path);
+    } catch(e) {
+        showToast('加载文件列表失败');
+    }
+}
+
+function renderFileList(data, path) {
+    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    header += renderConnectionInfo();
+    header += '</div>';
+    
+    let breadcrumb = '<div class="breadcrumb"><button class="breadcrumb-item" onclick="showDrives()">💻 我的电脑</button>';
+    let parts = data.path.split('/').filter(p => p);
+    let builtPath = '';
+    parts.forEach((part, index) => {
+        builtPath += '/' + part;
+        breadcrumb += '<span class="breadcrumb-sep">›</span>';
+        breadcrumb += '<button class="breadcrumb-item" onclick="navigateTo(\'' + builtPath + '\')">' + decodeURIComponent(part) + '</button>';
+    });
+    breadcrumb += '</div>';
+    
+    // Options bar with checkboxes
+    let optionsBar = '<div class="options-bar">' +
+        '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
+        '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
+        '</div>';
+
+    // Only disable upload for "My Computer" root
+    const isRoot = path === '/';
+    
+    let uploadArea = '';
+    if (isRoot) {
+        uploadArea = '<div class="card"><h2>⬆️ 上传文件到此目录</h2>' +
+            '<div class="upload-disabled" style="text-align:center; padding: 24px; color: #95a5a6;">' +
+            '⚠️ 请先选择一个磁盘或文件夹后再上传文件</div></div>';
+    } else {
+        uploadArea = '<div class="card"><h2>⬆️ 上传文件到此目录</h2>' +
+            '<div class="upload-area" id="uploadArea">' +
+            '<div class="upload-icon">📤</div>' +
+            '<div class="upload-text">点击选择文件 或 拖拽文件到此处</div>' +
+            '<input type="file" id="fileInput" multiple style="display:none">' +
+            '</div></div>';
+    }
+    
+    let fileListHtml = '<div class="card"><div style="display:flex; align-items:center; margin-bottom: 12px;"><button class="back-btn" onclick="goUp()">⬆️ 上级目录</button><h2 style="margin:0; flex:1;">📂 ' + (data.files.length > 0 ? data.files.length + ' 个项目' : '文件夹') + '</h2></div>';
+    
+    if (data.permission_denied && data.permission_denied.length > 0) {
+        fileListHtml += '<div class="permission-denied">⚠️ ' + data.permission_denied.length + ' 个项目因权限不足无法显示</div>';
+    }
+    
+    if (data.files.length === 0) {
+        fileListHtml += '<div class="empty">📭 此目录为空</div>';
+    } else {
+        fileListHtml += '<ul class="file-list">';
+        data.files.forEach(file => {
+            const isFolder = file.is_directory;
+            const icon = isFolder ? '📁' : getFileIcon(file.name);
+            const iconClass = isFolder ? 'icon-folder' : 'icon-file';
+            const meta = isFolder ? (file.item_count || 0) + ' 个项目' : formatSize(file.size);
+            let actions = '';
+            if (isFolder) {
+                actions = '<button class="action-btn action-navigate" onclick="navigateTo(\'' + file.path + '\')">进入</button>';
+            } else {
+                actions = '<button class="action-btn action-download" onclick="downloadFile(\'' + file.path + '\')">下载</button>';
+            }
+            fileListHtml += '<li class="file-item">' +
+                '<div class="file-info">' +
+                    '<div class="file-icon ' + iconClass + '">' + icon + '</div>' +
+                    '<div><div class="file-name">' + escapeHtml(file.name) + '</div>' +
+                    '<div class="file-meta">' + meta + '</div></div>' +
+                '</div>' +
+                '<div class="file-actions">' + actions + '</div>' +
+            '</li>';
+        });
+        fileListHtml += '</ul>';
+    }
+    fileListHtml += '</div>';
+
+    document.getElementById('app').innerHTML = header + uploadArea + breadcrumb + optionsBar + fileListHtml + '<div id="taskList"></div>';
+    if (!isRoot) {
+        setupUpload();
+    }
+    updateTaskList();
+}
+
+function toggleHidden(checked) {
+    showHidden = checked;
+    if (currentPath === '/') {
+        renderDrives();
+    } else {
+        loadFileList(currentPath);
+    }
+}
+
+function toggleSystem(checked) {
+    showSystem = checked;
+    if (currentPath === '/') {
+        renderDrives();
+    } else {
+        loadFileList(currentPath);
+    }
+}
+
+function getFileIcon(name) {
+    const ext = name.split('.').pop().toLowerCase();
+    const icons = {
+        'exe': '⚙️', 'msi': '📦', 'zip': '🗜️', 'rar': '🗜️', '7z': '🗜️',
+        'jpg': '🖼️', 'jpeg': '🖼️', 'png': '🖼️', 'gif': '🖼️', 'bmp': '🖼️',
+        'mp3': '🎵', 'wav': '🎵', 'flac': '🎵', 'm4a': '🎵',
+        'mp4': '🎬', 'avi': '🎬', 'mkv': '🎬', 'mov': '🎬',
+        'pdf': '📄', 'doc': '📝', 'docx': '📝', 'xls': '📊', 'xlsx': '📊',
+        'ppt': '📽️', 'pptx': '📽️', 'txt': '📄', 'md': '📄',
+        'py': '🐍', 'js': '📜', 'html': '🌐', 'css': '🎨',
+        'cpp': '💻', 'h': '💻', 'c': '💻', 'java': '☕',
+        'json': '📋', 'xml': '📋', 'csv': '📊'
+    };
+    return icons[ext] || '📄';
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+function showDrives() {
+    currentPath = '/';
+    loadDrives();
+}
+
+function navigateTo(path) {
+    currentPath = path;
+    loadFileList(path);
+}
+
+function goUp() {
+    if (currentPath === '/' || currentPath.length <= 1) {
+        showDrives();
+        return;
+    }
+    let parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    if (!parentPath) parentPath = '/';
+    navigateTo(parentPath);
+}
+
+function downloadFile(path) {
+    const filename = decodeURIComponent(path.split('/').pop());
+    const task = addTask({ type: 'download', name: filename, status: 'downloading' });
+    
+    fetch('/api/download?path=' + encodeURIComponent(path), { signal: (task.controller = new AbortController()).signal })
+        .then(resp => {
+            if (!resp.ok) throw new Error('HTTP ' + resp.status);
+            const contentLength = parseInt(resp.headers.get('Content-Length') || '0');
+            task.totalSize = contentLength;
+            const reader = resp.body.getReader();
+            const chunks = [];
+            let loaded = 0;
+            
+            function readChunk() {
+                reader.read().then(({ done, value }) => {
+                    if (done) {
+                        const blob = new Blob(chunks);
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = filename;
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        URL.revokeObjectURL(url);
+                        completeTask(task.id, true);
+                        return;
+                    }
+                    chunks.push(value);
+                    loaded += value.length;
+                    updateTask(task.id, loaded, contentLength);
+                    readChunk();
+                }).catch(err => {
+                    if (err.name === 'AbortError') {
+                        removeTask(task.id);
+                    } else {
+                        completeTask(task.id, false);
+                    }
+                });
+            }
+            readChunk();
+        }).catch(err => {
+            if (err.name === 'AbortError') {
+                removeTask(task.id);
+            } else {
+                completeTask(task.id, false);
+            }
+        });
+}
+
+function setupUpload() {
+    const area = document.getElementById('uploadArea');
+    const input = document.getElementById('fileInput');
+
+    area.addEventListener('click', () => input.click());
+    area.addEventListener('dragover', e => {
+        e.preventDefault();
+        area.classList.add('dragover');
+    });
+    area.addEventListener('dragleave', () => area.classList.remove('dragover'));
+    area.addEventListener('drop', e => {
+        e.preventDefault();
+        area.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+    input.addEventListener('change', e => handleFiles(e.target.files));
+}
+
+function handleFiles(files) {
+    for (const file of files) {
+        uploadFile(file);
+    }
+}
+
+function uploadFile(file) {
+    const task = addTask({ type: 'upload', name: file.name, size: file.size, status: 'uploading' });
+    const formData = new FormData();
+    formData.append('path', currentPath);
+    formData.append('file', file);
+    
+    const xhr = new XMLHttpRequest();
+    task.xhr = xhr;
+    
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) { updateTask(task.id, e.loaded, e.total); }
+    };
+    
+    xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+            completeTask(task.id, true);
+        } else {
+            completeTask(task.id, false);
+        }
+        if (currentPath !== '/') { loadFileList(currentPath); }
+    };
+    
+    xhr.onerror = () => { completeTask(task.id, false); };
+    xhr.onabort = () => { removeTask(task.id); };
+    
+    xhr.open('POST', '/api/upload');
+    xhr.send(formData);
+}
+
+async function init() {
+    await loadInfo();
+    loadDrives();
+    
+    // Start connection monitoring (check every 5 seconds)
+    connectionCheckInterval = setInterval(checkConnection, 5000);
+}
+
+init();
+</script>
 </body>
 </html>
