@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件传输 - FileTransfer</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Connection Lost Overlay -->
+<div id="connectionLost" class="connection-lost">
+    <h2>⚠️ 连接已断开</h2>
+    <p>无法连接到文件传输服务器<br>服务器可能已停止或电脑已离线</p>
+    <button class="retry-btn" onclick="reconnect()">🔄 重新连接</button>
+    <div class="retry-count" id="retryCount"></div>
+</div>
+
+<script src="js/app.js"></script>
+</body>
+</html>

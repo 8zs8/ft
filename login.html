@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文件传输 - 登录</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.login-card { background: white; border-radius: 16px; padding: 40px; width: 100%; max-width: 380px; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.login-icon { text-align: center; font-size: 48px; margin-bottom: 16px; }
+.login-title { text-align: center; font-size: 22px; color: #2c3e50; margin-bottom: 8px; }
+.login-subtitle { text-align: center; font-size: 14px; color: #636e72; margin-bottom: 28px; }
+.login-input { width: 100%; padding: 14px 16px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 15px; outline: none; transition: border-color 0.2s; font-family: inherit; }
+.login-input:focus { border-color: #667eea; }
+.login-error { background: #ffeaa7; color: #d63031; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
+.login-error.show { display: block; }
+.login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 8px; }
+.login-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
+.login-footer { text-align: center; font-size: 12px; color: #b2bec3; margin-top: 24px; }
+.login-spinner { display: none; }
+.login-spinner.show { display: inline-block; }
+.login-spinner::after { content: ''; display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div class="login-card">
+    <div class="login-icon">🔐</div>
+    <div class="login-title">文件传输</div>
+    <div class="login-subtitle">请输入密码以继续</div>
+    <div class="login-error" id="errorBox">密码错误，请重试</div>
+    <form id="loginForm">
+        <input type="password" id="password" class="login-input" placeholder="请输入密码" autocomplete="current-password" autofocus>
+        <button type="submit" class="login-btn" id="loginBtn">登 录<span class="login-spinner" id="btnSpinner"></span></button>
+    </form>
+    <div class="login-footer">FileTransfer v2.0 · 安全传输</div>
+</div>
+
+<script>
+const form = document.getElementById('loginForm');
+const input = document.getElementById('password');
+const btn = document.getElementById('loginBtn');
+const btnSpinner = document.getElementById('btnSpinner');
+const errorBox = document.getElementById('errorBox');
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = input.value;
+    if (!password) return;
+    
+    btn.disabled = true;
+    btnSpinner.classList.add('show');
+    errorBox.classList.remove('show');
+    
+    try {
+        const resp = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password})
+        });
+        
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.success) {
+                window.location.href = '/';
+                return;
+            }
+        }
+        errorBox.textContent = '密码错误，请重试';
+        errorBox.classList.add('show');
+        input.value = '';
+        input.focus();
+    } catch(err) {
+        errorBox.textContent = '网络错误，请重试';
+        errorBox.classList.add('show');
+    } finally {
+        btn.disabled = false;
+        btnSpinner.classList.remove('show');
+    }
+});
+</script>
+</body>
+</html>
