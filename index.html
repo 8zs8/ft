@@ -158,12 +158,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 
 <script>
 // ============== Server URL Configuration ==============
+const DEFAULT_API_BASE = 'https://d94f6dc.cpolar.top';
+
 function getApiBase() {
-    return localStorage.getItem('ft_server_url') || '';
+    return localStorage.getItem('ft_server_url') || DEFAULT_API_BASE;
 }
 
 function setApiBase(url) {
-    if (url) {
+    if (url && url !== DEFAULT_API_BASE) {
         localStorage.setItem('ft_server_url', url.replace(/\/+$/, ''));
     } else {
         localStorage.removeItem('ft_server_url');
@@ -179,7 +181,8 @@ function api(path) {
 }
 
 function openSettings() {
-    document.getElementById('serverUrlInput').value = getApiBase();
+    const current = getApiBase();
+    document.getElementById('serverUrlInput').value = current === DEFAULT_API_BASE ? '' : current;
     document.getElementById('settingsModal').classList.add('show');
 }
 

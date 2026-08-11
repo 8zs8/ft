@@ -58,13 +58,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 </div>
 
 <script>
-// Server URL configuration
+// Server URL configuration - hardcoded cpolar tunnel
+const DEFAULT_API_BASE = 'https://d94f6dc.cpolar.top';
+
 function getApiBase() {
-    return localStorage.getItem('ft_server_url') || '';
+    return localStorage.getItem('ft_server_url') || DEFAULT_API_BASE;
 }
 
 function setApiBase(url) {
-    if (url) {
+    if (url && url !== DEFAULT_API_BASE) {
         localStorage.setItem('ft_server_url', url.replace(/\/+$/, ''));
     } else {
         localStorage.removeItem('ft_server_url');
@@ -83,7 +85,7 @@ function api(path) {
 (function initServerConfig() {
     const saved = getApiBase();
     const display = document.getElementById('serverUrlDisplay');
-    if (saved) {
+    if (saved && saved !== DEFAULT_API_BASE) {
         display.textContent = '当前: ' + saved;
         display.style.display = 'block';
     }
@@ -94,7 +96,7 @@ function api(path) {
         const input = document.getElementById('serverUrl');
         if (panel.style.display === 'none') {
             panel.style.display = 'block';
-            input.value = saved;
+            input.value = saved === DEFAULT_API_BASE ? '' : saved;
             input.focus();
         } else {
             panel.style.display = 'none';
@@ -104,7 +106,7 @@ function api(path) {
     document.getElementById('serverUrl').addEventListener('change', function() {
         setApiBase(this.value.trim());
         const display = document.getElementById('serverUrlDisplay');
-        if (this.value.trim()) {
+        if (this.value.trim() && this.value.trim() !== DEFAULT_API_BASE) {
             display.textContent = '当前: ' + this.value.trim();
             display.style.display = 'block';
         } else {
