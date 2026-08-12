@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,7 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif; background: #f5f7fa; color: #2c3e50; min-height: 100vh; }
 #app { max-width: 800px; margin: 0 auto; padding: 20px; }
-.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%; color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; position: relative; }
+.header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 16px; margin-bottom: 20px; position: relative; }
 .header h1 { font-size: 22px; margin-bottom: 8px; }
 .header p { opacity: 0.9; font-size: 14px; }
 .header-top { display: flex; justify-content: space-between; align-items: flex-start; }
@@ -20,10 +20,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .logout-btn:hover { background: rgba(255,255,255,0.3); }
 .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
 .card h2 { font-size: 16px; margin-bottom: 12px; color: #34495e; }
-.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 12px 24px; border: none; border-radius: 8px; font-size: 15px; font-weight: 500; cursor: pointer; transition: all 0.2s; }
-.btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%; color: white; width: 100%; }
-.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(102,126,234,0.4); }
-.btn-upload { background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%; color: white; width: 100%; margin-top: 12px; }
 .file-list { list-style: none; }
 .file-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #ecf0f1; transition: background 0.2s; }
 .file-item:hover { background: #f8f9fa; }
@@ -32,7 +28,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .file-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .icon-folder { background: #ffeaa7; }
 .icon-file { background: #dfe6e9; }
-.icon-drive { background: #74b9ff; }
 .file-name { font-size: 14px; color: #2c3e50; word-break: break-all; }
 .file-meta { font-size: 12px; color: #95a5a6; margin-top: 2px; }
 .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
@@ -90,7 +85,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .conn-info-title { font-size: 13px; opacity: 0.9; margin-bottom: 8px; }
 .conn-item { display: flex; align-items: center; gap: 8px; margin: 6px 0; font-size: 13px; }
 .conn-label { background: rgba(255,255,255,0.2); padding: 2px 8px; border-radius: 4px; font-size: 11px; white-space: nowrap; }
-.conn-url { flex: 1; font-family: monospace; word-break: break-all; opacity: 0.95; }
+.conn-url { flex: 1; font-family: monospace; word-break: break-all; opacity: 0.95; cursor: pointer; }
 .conn-copy { background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; }
 .conn-copy:hover { background: rgba(255,255,255,0.3); }
 .qr-section { display: flex; align-items: center; gap: 15px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.2); }
@@ -139,6 +134,7 @@ let drivesCache = [];
 let connectionCheckInterval = null;
 let connectionLostShown = false;
 let consecutiveFailures = 0;
+let hasSession = false;
 const MAX_FAILURES = 2;
 let showHidden = false;
 let showSystem = false;
@@ -175,16 +171,24 @@ function hideConnectionLost() {
 async function checkConnection() {
     try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         const resp = await fetch(api('/api/info'), { signal: controller.signal, cache: 'no-store', credentials: 'include' });
         clearTimeout(timeoutId);
-        
+
         if (resp.status === 401) {
-            window.location.href = 'login.html';
+            hasSession = false;
+            consecutiveFailures = 0;
+            document.getElementById('retryCount').textContent = '';
+            if (connectionLostShown) {
+                hideConnectionLost();
+            }
             return;
         }
-        
+
         if (resp.ok) {
+            hasSession = true;
+            consecutiveFailures = 0;
+            document.getElementById('retryCount').textContent = '';
             if (connectionLostShown) {
                 hideConnectionLost();
                 showToast('✅ 连接已恢复');
@@ -194,15 +198,16 @@ async function checkConnection() {
                     loadFileList(currentPath);
                 }
             }
-            consecutiveFailures = 0;
         } else {
             throw new Error('Server returned ' + resp.status);
         }
     } catch (e) {
-        consecutiveFailures++;
-        document.getElementById('retryCount').textContent = '已尝试 ' + consecutiveFailures + ' 次';
-        if (consecutiveFailures >= MAX_FAILURES) {
-            showConnectionLost();
+        if (hasSession) {
+            consecutiveFailures++;
+            document.getElementById('retryCount').textContent = '已尝试 ' + consecutiveFailures + ' 次';
+            if (consecutiveFailures >= MAX_FAILURES) {
+                showConnectionLost();
+            }
         }
     }
 }
@@ -214,7 +219,7 @@ async function reconnect() {
 }
 
 function formatSize(bytes) {
-    if (bytes === 0) return '0 B';
+    if (!bytes) return '0 B';
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return (bytes / Math.pow(1024, i)).toFixed(i > 0 ? 1 : 0) + ' ' + units[i];
@@ -230,7 +235,9 @@ function formatDriveSize(bytes) {
 async function loadInfo() {
     try {
         const resp = await fetch(api('/api/info'), { credentials: 'include' });
-        serverInfo = await resp.json();
+        if (resp.ok) {
+            serverInfo = await resp.json();
+        }
     } catch(e) {
         console.error('Failed to load info:', e);
     }
@@ -239,11 +246,86 @@ async function loadInfo() {
 async function loadDrives() {
     try {
         const resp = await fetch(api('/api/drives'), { credentials: 'include' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
         drivesCache = await resp.json();
         renderDrives();
     } catch(e) {
         showToast('加载驱动器列表失败');
     }
+}
+
+function renderDrives() {
+    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    header += renderConnectionInfo();
+    header += '</div>';
+
+    let optionsBar = '<div class="options-bar">' +
+        '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
+        '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
+        '</div>';
+
+    let content = '<div class="card"><h2>💾 选择驱动器</h2>';
+    if (drivesCache.length === 0) {
+        content += '<div class="empty">没有找到可用的驱动器</div>';
+    } else {
+        content += '<div class="drive-grid">';
+        drivesCache.forEach(drive => {
+            const usedPercent = drive.total > 0 ? ((drive.total - drive.free) / drive.total * 100) : 0;
+            const icon = drive.type === '固定驱动器' ? '💽' : drive.type === '可移动驱动器' ? '💾' : drive.type === '光盘驱动器' ? '💿' : drive.type === '远程驱动器' ? '🌐' : '📀';
+            const label = drive.label ? ' (' + drive.label + ')' : '';
+            content += '<div class="drive-item" onclick="navigateTo(\'' + drive.path.replace(/\\/g, '/') + '\')">' +
+                '<div class="drive-icon">' + icon + '</div>' +
+                '<div class="drive-name">' + drive.letter + ':' + label + '</div>' +
+                '<div class="drive-info">' + drive.type + '</div>' +
+                '<div class="drive-info">总容量: ' + formatDriveSize(drive.total) + '</div>' +
+                '<div class="drive-bar"><div class="drive-bar-fill" style="width:' + usedPercent + '%"></div></div>' +
+                '</div>';
+        });
+        content += '</div>';
+    }
+    content += '</div>';
+
+    document.getElementById('app').innerHTML = header + optionsBar + content + '<div id="taskList"></div>';
+}
+
+function renderConnectionInfo() {
+    let html = '';
+    const lanUrl = serverInfo.lanUrl || '';
+    const tunnelUrl = serverInfo.tunnelUrl || '';
+
+    html += '<div class="conn-info">';
+    html += '<div class="conn-info-title">🔗 连接方式</div>';
+
+    if (lanUrl) {
+        html += '<div class="conn-item">';
+        html += '<span class="conn-label">局域网</span>';
+        html += '<span class="conn-url" onclick="copyUrl(\'' + lanUrl + '\')">' + lanUrl + '</span>';
+        html += '<button class="conn-copy" onclick="copyUrl(\'' + lanUrl + '\')">复制</button>';
+        html += '</div>';
+    }
+
+    if (tunnelUrl) {
+        html += '<div class="conn-item">';
+        html += '<span class="conn-label">🌐 外网</span>';
+        html += '<span class="conn-url" onclick="copyUrl(\'' + tunnelUrl + '\')">' + tunnelUrl + '</span>';
+        html += '<button class="conn-copy" onclick="copyUrl(\'' + tunnelUrl + '\')">复制</button>';
+        html += '</div>';
+    }
+
+    html += '</div>';
+
+    if (tunnelUrl) {
+        html += '<div class="qr-section">';
+        html += '<img class="qr-img" src="' + api('/api/qrcode') + '?t=' + Date.now() + '" alt="QR Code">';
+        html += '<div class="qr-hint">';
+        html += '📱 扫描二维码访问<br>';
+        html += '<strong>同一WiFi</strong>：使用局域网地址<br>';
+        html += '<strong>不同网络</strong>：使用外网隧道地址';
+        html += '</div>';
+        html += '</div>';
+    }
+
+    return html;
 }
 
 function logout() {
@@ -268,88 +350,6 @@ function copyUrl(url) {
     }).catch(() => {
         showToast('❌ 复制失败，请手动复制');
     });
-}
-
-function renderDrives() {
-    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><div><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
-    header += renderConnectionInfo();
-    header += '</div>';
-    
-    let optionsBar = '<div class="options-bar">' +
-        '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
-        '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
-        '</div>';
-    
-    let content = '<div class="card"><h2>💾 选择驱动器</h2>';
-    if (drivesCache.length === 0) {
-        content += '<div class="empty">没有找到可用的驱动器</div>';
-    } else {
-        content += '<div class="drive-grid">';
-        drivesCache.forEach(drive => {
-            const usedPercent = drive.total > 0 ? ((drive.total - drive.free) / drive.total * 100) : 0;
-            const icon = drive.type === '固定驱动器' ? '💽' : drive.type === '可移动驱动器' ? '💾' : drive.type === '光盘驱动器' ? '💿' : drive.type === '远程驱动器' ? '🌐' : '📀';
-            const label = drive.label ? ` (${drive.label})` : '';
-            content += '<div class="drive-item" onclick="navigateTo(\'' + drive.path.replace(/\\/g, '/') + '\')">' +
-                '<div class="drive-icon">' + icon + '</div>' +
-                '<div class="drive-name">' + drive.letter + ':' + label + '</div>' +
-                '<div class="drive-info">' + drive.type + '</div>' +
-                '<div class="drive-info">总容量: ' + formatDriveSize(drive.total) + '</div>' +
-                '<div class="drive-bar"><div class="drive-bar-fill" style="width:' + usedPercent + '%"></div></div>' +
-                '</div>';
-        });
-        content += '</div>';
-    }
-    content += '</div>';
-    
-    document.getElementById('app').innerHTML = header + optionsBar + content + '<div id="taskList"></div>';
-}
-
-function renderConnectionInfo() {
-    let html = '';
-    const lanUrl = serverInfo.lanUrl || '';
-    const tunnelUrl = serverInfo.tunnelUrl || '';
-    const currentBase = API_BASE;
-    
-    html += '<div class="conn-info">';
-    html += '<div class="conn-info-title">🔗 连接方式</div>';
-    
-    if (currentBase) {
-        html += '<div class="conn-item">';
-        html += '<span class="conn-label">🖥️ 服务器</span>';
-        html += '<span class="conn-url" style="font-size:11px;">' + currentBase + '</span>';
-        html += '</div>';
-    }
-    
-    if (lanUrl) {
-        html += '<div class="conn-item">';
-        html += '<span class="conn-label">局域网</span>';
-        html += '<span class="conn-url" onclick="copyUrl(\'' + lanUrl + '\')" style="cursor:pointer">' + lanUrl + '</span>';
-        html += '<button class="conn-copy" onclick="copyUrl(\'' + lanUrl + '\')">复制</button>';
-        html += '</div>';
-    }
-    
-    if (tunnelUrl) {
-        html += '<div class="conn-item">';
-        html += '<span class="conn-label">🌐 外网</span>';
-        html += '<span class="conn-url" onclick="copyUrl(\'' + tunnelUrl + '\')" style="cursor:pointer">' + tunnelUrl + '</span>';
-        html += '<button class="conn-copy" onclick="copyUrl(\'' + tunnelUrl + '\')">复制</button>';
-        html += '</div>';
-    }
-    
-    html += '</div>';
-    
-    if (tunnelUrl) {
-        html += '<div class="qr-section">';
-        html += '<img class="qr-img" src="' + api('/api/qrcode') + '?t=' + Date.now() + '" alt="QR Code" crossorigin="anonymous">';
-        html += '<div class="qr-hint">';
-        html += '📱 扫描二维码访问<br>';
-        html += '<strong>同一WiFi</strong>：使用局域网地址<br>';
-        html += '<strong>不同网络</strong>：使用外网隧道地址';
-        html += '</div>';
-        html += '</div>';
-    }
-    
-    return html;
 }
 
 function updateTaskList() {
@@ -436,10 +436,11 @@ function removeTask(taskId) {
 async function loadFileList(path) {
     const loadingHtml = '<div class="card"><div class="loading-spinner"><div class="spinner"></div></div><div style="text-align:center; color:#636e72; font-size:13px;">正在加载文件列表...</div></div>';
     document.getElementById('app').innerHTML = loadingHtml + '<div id="taskList"></div>';
-    
+
     try {
         const url = api('/api/list') + '?path=' + encodeURIComponent(path) + '&show_hidden=' + (showHidden ? '1' : '0') + '&show_system=' + (showSystem ? '1' : '0');
         const resp = await fetch(url, { credentials: 'include' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         renderFileList(data, path);
     } catch(e) {
@@ -448,10 +449,10 @@ async function loadFileList(path) {
 }
 
 function renderFileList(data, path) {
-    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><div><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
     header += renderConnectionInfo();
     header += '</div>';
-    
+
     let breadcrumb = '<div class="breadcrumb"><button class="breadcrumb-item" onclick="showDrives()">💻 我的电脑</button>';
     let parts = data.path.split('/').filter(p => p);
     let builtPath = '';
@@ -461,14 +462,14 @@ function renderFileList(data, path) {
         breadcrumb += '<button class="breadcrumb-item" onclick="navigateTo(\'' + builtPath + '\')">' + decodeURIComponent(part) + '</button>';
     });
     breadcrumb += '</div>';
-    
+
     let optionsBar = '<div class="options-bar">' +
         '<label class="option-label"><input type="checkbox" id="showHidden" ' + (showHidden ? 'checked' : '') + ' onchange="toggleHidden(this.checked)"> 显示隐藏的文件</label>' +
         '<label class="option-label"><input type="checkbox" id="showSystem" ' + (showSystem ? 'checked' : '') + ' onchange="toggleSystem(this.checked)"> 显示受保护的系统文件</label>' +
         '</div>';
 
     const isRoot = path === '/';
-    
+
     let uploadArea = '';
     if (isRoot) {
         uploadArea = '<div class="card"><h2>⬆️ 上传文件到此目录</h2>' +
@@ -482,13 +483,13 @@ function renderFileList(data, path) {
             '<input type="file" id="fileInput" multiple style="display:none">' +
             '</div></div>';
     }
-    
+
     let fileListHtml = '<div class="card"><div style="display:flex; align-items:center; margin-bottom: 12px;"><button class="back-btn" onclick="goUp()">⬆️ 上级目录</button><h2 style="margin:0; flex:1;">📂 ' + (data.files.length > 0 ? data.files.length + ' 个项目' : '文件夹') + '</h2></div>';
-    
+
     if (data.permission_denied && data.permission_denied.length > 0) {
         fileListHtml += '<div class="permission-denied">⚠️ ' + data.permission_denied.length + ' 个项目因权限不足无法显示</div>';
     }
-    
+
     if (data.files.length === 0) {
         fileListHtml += '<div class="empty">📭 此目录为空</div>';
     } else {
@@ -524,22 +525,16 @@ function renderFileList(data, path) {
     updateTaskList();
 }
 
-function toggleHidden(checked) {
-    showHidden = checked;
-    if (currentPath === '/') {
-        renderDrives();
-    } else {
-        loadFileList(currentPath);
-    }
-}
+function toggleHidden(checked) { showHidden = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
+function toggleSystem(checked) { showSystem = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
+function showDrives() { currentPath = '/'; loadDrives(); }
+function navigateTo(path) { currentPath = path; loadFileList(path); }
 
-function toggleSystem(checked) {
-    showSystem = checked;
-    if (currentPath === '/') {
-        renderDrives();
-    } else {
-        loadFileList(currentPath);
-    }
+function goUp() {
+    if (currentPath === '/' || currentPath.length <= 1) { showDrives(); return; }
+    let parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    if (!parentPath) parentPath = '/';
+    navigateTo(parentPath);
 }
 
 function getFileIcon(name) {
@@ -564,34 +559,12 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
-function showDrives() {
-    currentPath = '/';
-    loadDrives();
-}
-
-function navigateTo(path) {
-    currentPath = path;
-    loadFileList(path);
-}
-
-function goUp() {
-    if (currentPath === '/' || currentPath.length <= 1) {
-        showDrives();
-        return;
-    }
-    let parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-    if (!parentPath) parentPath = '/';
-    navigateTo(parentPath);
-}
-
 function downloadFile(path) {
     const filename = decodeURIComponent(path.split('/').pop());
     const task = addTask({ type: 'download', name: filename, status: 'downloading' });
-    
-    fetch(api('/api/download') + '?path=' + encodeURIComponent(path), { 
-        signal: (task.controller = new AbortController()).signal,
-        credentials: 'include'
-    })
+    task.controller = new AbortController();
+
+    fetch(api('/api/download') + '?path=' + encodeURIComponent(path), { signal: task.controller.signal, credentials: 'include' })
         .then(resp => {
             if (!resp.ok) throw new Error('HTTP ' + resp.status);
             const contentLength = parseInt(resp.headers.get('Content-Length') || '0');
@@ -599,7 +572,7 @@ function downloadFile(path) {
             const reader = resp.body.getReader();
             const chunks = [];
             let loaded = 0;
-            
+
             function readChunk() {
                 reader.read().then(({ done, value }) => {
                     if (done) {
@@ -666,14 +639,14 @@ function uploadFile(file) {
     const formData = new FormData();
     formData.append('path', currentPath);
     formData.append('file', file);
-    
+
     const xhr = new XMLHttpRequest();
     task.xhr = xhr;
-    
+
     xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) { updateTask(task.id, e.loaded, e.total); }
     };
-    
+
     xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
             completeTask(task.id, true);
@@ -682,20 +655,20 @@ function uploadFile(file) {
         }
         if (currentPath !== '/') { loadFileList(currentPath); }
     };
-    
+
     xhr.onerror = () => { completeTask(task.id, false); };
     xhr.onabort = () => { removeTask(task.id); };
-    
+
     xhr.open('POST', api('/api/upload'));
     xhr.withCredentials = true;
     xhr.send(formData);
 }
 
 async function init() {
-    checkSession();
     await loadInfo();
+    checkSession();
     loadDrives();
-    
+
     connectionCheckInterval = setInterval(checkConnection, 5000);
 }
 
