@@ -118,6 +118,62 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .search-cancel:hover { background: #fdcb6e; }
 .search-meta { font-size: 12px; color: #95a5a6; margin: -6px 0 12px 4px; }
 .search-rel { font-size: 11px; color: #95a5a6; margin-top: 2px; word-break: break-all; }
+/* 远程控制按钮 */
+.remote-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; margin-left: 8px; }
+.remote-btn:hover { background: rgba(255,255,255,0.35); }
+/* 远程控制全屏弹窗 */
+.rc-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9000; display: none; align-items: center; justify-content: center; padding: 16px; }
+.rc-overlay.show { display: flex; }
+.rc-panel { background: white; border-radius: 16px; width: 100%; max-width: 920px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; }
+@keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.rc-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; }
+.rc-title { font-size: 16px; font-weight: 600; color: #2c3e50; }
+.rc-close { background: none; border: none; font-size: 22px; color: #b2bec3; cursor: pointer; line-height: 1; }
+.rc-close:hover { color: #e74c3c; }
+.rc-tabs { display: flex; gap: 0; padding: 0 20px; border-bottom: 2px solid #ecf0f1; flex-shrink: 0; }
+.rc-tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #95a5a6; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+.rc-tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
+.rc-tab:hover:not(.active) { color: #2c3e50; }
+.rc-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.rc-tab-content { display: none; flex: 1; flex-direction: column; min-height: 0; }
+.rc-tab-content.active { display: flex; }
+/* 终端 */
+.term-output { flex: 1; overflow-y: auto; background: #1e1e2e; color: #a6accd; font-family: 'Cascadia Code', 'Consolas', 'Courier New', monospace; font-size: 13px; padding: 12px; white-space: pre-wrap; word-break: break-all; line-height: 1.5; }
+.term-output .term-cmd { color: #89dceb; }
+.term-output .term-err { color: #f38ba8; }
+.term-output .term-info { color: #a6e3a1; }
+.term-input-bar { display: flex; gap: 8px; padding: 10px 12px; background: #181825; border-top: 1px solid #313244; flex-shrink: 0; }
+.term-prompt { color: #a6e3a1; font-family: monospace; font-size: 13px; padding: 8px 0; white-space: nowrap; }
+.term-input { flex: 1; background: #313244; border: 1px solid #45475a; border-radius: 6px; padding: 8px 12px; color: #cdd6f4; font-family: 'Cascadia Code', 'Consolas', monospace; font-size: 13px; outline: none; }
+.term-input:focus { border-color: #89b4fa; }
+.term-send { padding: 8px 16px; background: #cba6f7; color: #1e1e2e; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.term-send:hover { background: #b4befe; }
+.term-send:disabled { opacity: 0.5; cursor: not-allowed; }
+/* 远程桌面 */
+.desktop-toolbar { display: flex; gap: 8px; padding: 10px 12px; background: #f8f9fa; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
+.desktop-btn { padding: 6px 12px; background: white; border: 1px solid #dfe6e9; border-radius: 6px; cursor: pointer; font-size: 12px; color: #2c3e50; transition: all 0.2s; }
+.desktop-btn:hover { background: #667eea; color: white; border-color: #667eea; }
+.desktop-btn.active { background: #667eea; color: white; border-color: #667eea; }
+.desktop-info { font-size: 11px; color: #95a5a6; margin-left: auto; }
+.desktop-view { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #2d3436; padding: 8px; min-height: 0; }
+.desktop-screenshot { max-width: 100%; max-height: 100%; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; }
+.desktop-loading { color: #b2bec3; font-size: 14px; }
+/* 协议弹窗 */
+.agreement-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9500; display: none; align-items: center; justify-content: center; padding: 20px; }
+.agreement-modal.show { display: flex; }
+.agreement-card { background: white; border-radius: 16px; width: 100%; max-width: 560px; max-height: 85vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.agreement-header { padding: 20px; border-bottom: 1px solid #ecf0f1; }
+.agreement-header h3 { font-size: 18px; color: #2c3e50; margin-bottom: 4px; }
+.agreement-header p { font-size: 13px; color: #95a5a6; }
+.agreement-body { flex: 1; overflow-y: auto; padding: 16px 20px; font-size: 13px; color: #636e72; line-height: 1.7; white-space: pre-wrap; }
+.agreement-footer { padding: 16px 20px; border-top: 1px solid #ecf0f1; display: flex; flex-direction: column; gap: 12px; }
+.agreement-check { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #2c3e50; cursor: pointer; }
+.agreement-check input { width: 16px; height: 16px; cursor: pointer; }
+.agreement-btns { display: flex; gap: 12px; }
+.agreement-btn { flex: 1; padding: 12px; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; }
+.agreement-btn.agree { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+.agreement-btn.agree:disabled { opacity: 0.5; cursor: not-allowed; }
+.agreement-btn.decline { background: #ecf0f1; color: #636e72; }
 .connection-lost { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.95); color: white; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 9999; padding: 20px; text-align: center; }
 .connection-lost.show { display: flex; }
 .connection-lost h2 { font-size: 24px; margin-bottom: 16px; }
@@ -144,6 +200,63 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
     <p>无法连接到文件传输服务器<br>服务器可能已停止或电脑已离线</p>
     <button class="retry-btn" onclick="reconnect()">🔄 重新连接</button>
     <div class="retry-count" id="retryCount"></div>
+</div>
+
+<!-- 服务协议弹窗 -->
+<div class="agreement-modal" id="agreementModal">
+    <div class="agreement-card">
+        <div class="agreement-header">
+            <h3>📄 远程控制服务协议</h3>
+            <p>使用远程控制功能前，请仔细阅读并同意以下协议</p>
+        </div>
+        <div class="agreement-body" id="agreementBody">加载中...</div>
+        <div class="agreement-footer">
+            <label class="agreement-check">
+                <input type="checkbox" id="agreementCheck" onchange="document.getElementById('agreementAgreeBtn').disabled = !this.checked">
+                我已阅读并同意以上全部条款
+            </label>
+            <div class="agreement-btns">
+                <button class="agreement-btn decline" onclick="closeAgreement()">不同意</button>
+                <button class="agreement-btn agree" id="agreementAgreeBtn" disabled onclick="acceptAgreement()">同意并继续</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 远程控制面板 -->
+<div class="rc-overlay" id="rcOverlay">
+    <div class="rc-panel">
+        <div class="rc-header">
+            <div class="rc-title">🖥️ 远程控制</div>
+            <button class="rc-close" onclick="closeRemoteControl()">&times;</button>
+        </div>
+        <div class="rc-tabs">
+            <button class="rc-tab active" id="rcTabTerminal" onclick="switchRcTab('terminal')">⌨️ 命令终端</button>
+            <button class="rc-tab" id="rcTabDesktop" onclick="switchRcTab('desktop')">🖱️ 远程桌面</button>
+        </div>
+        <div class="rc-body">
+            <!-- 终端 -->
+            <div class="rc-tab-content active" id="rcContentTerminal">
+                <div class="term-output" id="termOutput">远程命令终端就绪。输入命令后按回车执行。</div>
+                <div class="term-input-bar">
+                    <span class="term-prompt">PS&gt;</span>
+                    <input type="text" class="term-input" id="termInput" placeholder="输入命令..." autocomplete="off" autocapitalize="none" spellcheck="false">
+                    <button class="term-send" id="termSend" onclick="execTerminalCmd()">执行</button>
+                </div>
+            </div>
+            <!-- 远程桌面 -->
+            <div class="rc-tab-content" id="rcContentDesktop">
+                <div class="desktop-toolbar">
+                    <button class="desktop-btn" onclick="refreshScreenshot()">🔄 刷新</button>
+                    <button class="desktop-btn" onclick="toggleAutoRefresh(this)" id="autoRefreshBtn">⏯️ 自动刷新</button>
+                    <span class="desktop-info" id="desktopInfo">未连接</span>
+                </div>
+                <div class="desktop-view" id="desktopView">
+                    <span class="desktop-loading">点击"刷新"查看屏幕</span>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -288,7 +401,7 @@ async function loadDrives() {
 }
 
 function renderDrives() {
-    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>💻 文件传输</h1><p>访问电脑所有文件</p></div><div style="display:flex; align-items:center; gap:0;"><button class="remote-btn" onclick="openRemoteControl()">🖥️ 远程控制</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
 
@@ -487,7 +600,7 @@ async function loadFileList(path) {
 
 function renderFileList(data, path) {
     currentFiles = data.files || [];
-    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
+    let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><div style="display:flex; align-items:center; gap:0;"><button class="remote-btn" onclick="openRemoteControl()">🖥️ 远程控制</button><button class="logout-btn" onclick="logout()">🚪 退出</button></div></div>';
     header += renderConnectionInfo();
     header += '</div>';
 
@@ -952,6 +1065,312 @@ function uploadFile(file) {
     xhr.setRequestHeader('X-CSRF-Token', getCsrfToken());
     xhr.send(formData);
 }
+
+// ==================== 远程控制功能 ====================
+let rcAgreed = false;           // 是否已同意协议
+let rcAgreementChecked = false;  // 是否已检查过协议状态
+let termHistory = [];           // 命令历史
+let termHistoryIdx = -1;
+let termRunning = false;        // 终端是否有命令正在执行
+let desktopAutoRefresh = false;
+let desktopRefreshTimer = null;
+let desktopScreenWidth = 0;
+let desktopScreenHeight = 0;
+
+// 打开远程控制（先检查协议）
+async function openRemoteControl() {
+    document.getElementById('rcOverlay').classList.add('show');
+    // 检查协议状态
+    if (!rcAgreementChecked) {
+        try {
+            const resp = await fetch(api('/api/agreement'), { credentials: 'include' });
+            const data = await resp.json();
+            rcAgreed = data.agreed;
+            rcAgreementChecked = true;
+        } catch(e) { /* 忽略 */ }
+    }
+    if (!rcAgreed) {
+        showAgreement();
+    }
+}
+
+function closeRemoteControl() {
+    document.getElementById('rcOverlay').classList.remove('show');
+    // 停止自动刷新
+    if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
+    desktopAutoRefresh = false;
+    const btn = document.getElementById('autoRefreshBtn');
+    if (btn) { btn.classList.remove('active'); btn.textContent = '⏯️ 自动刷新'; }
+}
+
+// 协议弹窗
+async function showAgreement() {
+    const modal = document.getElementById('agreementModal');
+    const body = document.getElementById('agreementBody');
+    modal.classList.add('show');
+    body.textContent = '加载中...';
+    try {
+        const resp = await fetch(api('/api/agreement'), { credentials: 'include' });
+        const data = await resp.json();
+        body.textContent = data.text || '协议加载失败';
+    } catch(e) {
+        body.textContent = '协议加载失败，请检查网络连接';
+    }
+}
+
+function closeAgreement() {
+    document.getElementById('agreementModal').classList.remove('show');
+    document.getElementById('agreementCheck').checked = false;
+    document.getElementById('agreementAgreeBtn').disabled = true;
+}
+
+async function acceptAgreement() {
+    try {
+        const resp = await fetch(api('/api/agreement'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+            body: JSON.stringify({ agree: true }),
+            credentials: 'include'
+        });
+        const data = await resp.json();
+        if (data.success) {
+            rcAgreed = true;
+            closeAgreement();
+            showToast('✅ 已同意服务协议，可使用远程控制功能');
+        } else {
+            showToast('❌ 同意失败: ' + (data.error || '未知错误'));
+        }
+    } catch(e) {
+        showToast('❌ 网络错误');
+    }
+}
+
+// 切换标签页
+function switchRcTab(tab) {
+    document.querySelectorAll('.rc-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.rc-tab-content').forEach(c => c.classList.remove('active'));
+    if (tab === 'terminal') {
+        document.getElementById('rcTabTerminal').classList.add('active');
+        document.getElementById('rcContentTerminal').classList.add('active');
+        setTimeout(() => document.getElementById('termInput') && document.getElementById('termInput').focus(), 100);
+    } else if (tab === 'desktop') {
+        document.getElementById('rcTabDesktop').classList.add('active');
+        document.getElementById('rcContentDesktop').classList.add('active');
+        if (!desktopScreenWidth) refreshScreenshot();
+    }
+}
+
+// ==================== 远程命令终端 ====================
+async function execTerminalCmd() {
+    if (!rcAgreed) { showAgreement(); return; }
+    const input = document.getElementById('termInput');
+    const cmd = input.value.trim();
+    if (!cmd || termRunning) return;
+
+    // 显示命令
+    const output = document.getElementById('termOutput');
+    const cmdLine = document.createElement('div');
+    cmdLine.className = 'term-cmd';
+    cmdLine.textContent = 'PS> ' + cmd;
+    output.appendChild(cmdLine);
+    output.scrollTop = output.scrollHeight;
+
+    // 记录历史
+    termHistory.push(cmd);
+    termHistoryIdx = termHistory.length;
+    input.value = '';
+    termRunning = true;
+    document.getElementById('termSend').disabled = true;
+
+    try {
+        const resp = await fetch(api('/api/terminal'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+            body: JSON.stringify({ command: cmd, timeout: 30 }),
+            credentials: 'include'
+        });
+
+        if (resp.status === 403) {
+            const data = await resp.json().catch(() => ({}));
+            if (data.need_agreement) {
+                showAgreement();
+                termRunning = false;
+                document.getElementById('termSend').disabled = false;
+                return;
+            }
+            output.appendChild(createTermLine('权限不足: ' + (data.error || ''), 'term-err'));
+            termRunning = false;
+            document.getElementById('termSend').disabled = false;
+            return;
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            let idx;
+            while ((idx = buffer.indexOf('\n')) >= 0) {
+                const line = buffer.slice(0, idx).trim();
+                buffer = buffer.slice(idx + 1);
+                if (!line) continue;
+                try {
+                    const evt = JSON.parse(line);
+                    handleTermEvent(evt, output);
+                } catch(e) {}
+            }
+        }
+        if (buffer.trim()) {
+            try { handleTermEvent(JSON.parse(buffer.trim()), output); } catch(e) {}
+        }
+    } catch(e) {
+        output.appendChild(createTermLine('网络错误: ' + e.message, 'term-err'));
+    } finally {
+        termRunning = false;
+        document.getElementById('termSend').disabled = false;
+        input.focus();
+    }
+}
+
+function handleTermEvent(evt, output) {
+    if (evt.type === 'output') {
+        output.appendChild(createTermLine(evt.text, ''));
+    } else if (evt.type === 'error') {
+        output.appendChild(createTermLine('[错误] ' + evt.error, 'term-err'));
+    } else if (evt.type === 'done') {
+        if (evt.exit_code !== undefined && evt.exit_code !== 0) {
+            output.appendChild(createTermLine('[退出码: ' + evt.exit_code + ']', 'term-err'));
+        }
+    }
+    output.scrollTop = output.scrollHeight;
+}
+
+function createTermLine(text, cls) {
+    const div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.textContent = text;
+    return div;
+}
+
+// 终端输入：回车执行，上下键浏览历史
+document.addEventListener('keydown', (e) => {
+    if (!document.getElementById('rcOverlay').classList.contains('show')) return;
+    if (e.target && e.target.id === 'termInput') {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            execTerminalCmd();
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (termHistory.length > 0 && termHistoryIdx > 0) {
+                termHistoryIdx--;
+                e.target.value = termHistory[termHistoryIdx];
+            }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (termHistoryIdx < termHistory.length - 1) {
+                termHistoryIdx++;
+                e.target.value = termHistory[termHistoryIdx];
+            } else {
+                termHistoryIdx = termHistory.length;
+                e.target.value = '';
+            }
+        }
+    }
+});
+
+// ==================== 远程桌面鼠标控制 ====================
+async function refreshScreenshot() {
+    if (!rcAgreed) { showAgreement(); return; }
+    const view = document.getElementById('desktopView');
+    const info = document.getElementById('desktopInfo');
+    view.innerHTML = '<span class="desktop-loading">⏳ 正在截屏...</span>';
+    try {
+        const resp = await fetch(api('/api/screenshot') + '?t=' + Date.now(), { credentials: 'include' });
+        if (resp.status === 403) {
+            const data = await resp.json().catch(() => ({}));
+            if (data.need_agreement) { showAgreement(); return; }
+            view.innerHTML = '<span class="desktop-loading">❌ 权限不足</span>';
+            return;
+        }
+        if (!resp.ok) { view.innerHTML = '<span class="desktop-loading">❌ 截屏失败</span>'; return; }
+        desktopScreenWidth = parseInt(resp.headers.get('X-Screen-Width') || '0');
+        desktopScreenHeight = parseInt(resp.headers.get('X-Screen-Height') || '0');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" src="' + url + '" alt="屏幕截图">';
+        info.textContent = '屏幕: ' + desktopScreenWidth + 'x' + desktopScreenHeight;
+        // 绑定鼠标事件
+        const img = document.getElementById('screenshotImg');
+        img.addEventListener('click', onDesktopClick);
+        img.addEventListener('contextmenu', (e) => { e.preventDefault(); onDesktopAction(e, 'right'); });
+        img.addEventListener('dblclick', (e) => { e.preventDefault(); onDesktopAction(e, 'dblclick'); });
+    } catch(e) {
+        view.innerHTML = '<span class="desktop-loading">❌ 网络错误</span>';
+    }
+}
+
+function onDesktopClick(e) {
+    onDesktopAction(e, 'click');
+}
+
+async function onDesktopAction(e, action) {
+    if (!rcAgreed) return;
+    const img = document.getElementById('screenshotImg');
+    if (!img) return;
+    const rect = img.getBoundingClientRect();
+    // 计算相对坐标（0~1）
+    const relX = (e.clientX - rect.left) / rect.width;
+    const relY = (e.clientY - rect.top) / rect.height;
+    // 限制在 0~1 范围
+    const x = Math.max(0, Math.min(1, relX));
+    const y = Math.max(0, Math.min(1, relY));
+    try {
+        const resp = await fetch(api('/api/mouse'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+            body: JSON.stringify({ action: action, x: x, y: y }),
+            credentials: 'include'
+        });
+        if (resp.status === 403) {
+            const data = await resp.json().catch(() => ({}));
+            if (data.need_agreement) showAgreement();
+            return;
+        }
+        if (resp.ok && desktopAutoRefresh) {
+            // 操作后短暂延迟再刷新截图
+            setTimeout(refreshScreenshot, 300);
+        }
+    } catch(err) { /* 忽略 */ }
+}
+
+function toggleAutoRefresh(btn) {
+    desktopAutoRefresh = !desktopAutoRefresh;
+    if (desktopAutoRefresh) {
+        btn.classList.add('active');
+        btn.textContent = '⏸️ 停止刷新';
+        autoRefreshLoop();
+    } else {
+        btn.classList.remove('active');
+        btn.textContent = '⏯️ 自动刷新';
+        if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
+    }
+}
+
+function autoRefreshLoop() {
+    if (!desktopAutoRefresh) return;
+    refreshScreenshot().then(() => {
+        if (desktopAutoRefresh) {
+            desktopRefreshTimer = setTimeout(autoRefreshLoop, 2000);
+        }
+    });
+}
+
+// 点击远程控制面板背景关闭
+document.getElementById('rcOverlay').addEventListener('click', (e) => {
+    if (e.target === document.getElementById('rcOverlay')) closeRemoteControl();
+});
 
 async function init() {
     // 先检测服务器是否可达（避免从 file:// 打开时跨域请求被静默阻止）
