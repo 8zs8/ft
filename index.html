@@ -337,16 +337,16 @@ function getCsrfToken() {
 
 function logout() {
     fetch(api('/api/logout'), { method: 'POST', credentials: 'include', headers: {'X-CSRF-Token': getCsrfToken()} }).then(() => {
-        window.location.href = 'login.html';
+        window.location.href = './login';
     }).catch(() => {
-        window.location.href = 'login.html';
+        window.location.href = './login';
     });
 }
 
 function checkSession() {
     fetch(api('/api/info'), { cache: 'no-store', credentials: 'include' }).then(resp => {
         if (resp.status === 401) {
-            window.location.href = 'login.html';
+            window.location.href = './login';
         }
     }).catch(() => {});
 }
@@ -687,7 +687,7 @@ async function init() {
         reachable = true;
         if (resp.status === 401) {
             // 未登录，跳转到登录页
-            window.location.href = 'login.html';
+            window.location.href = './login';
             return;
         }
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
