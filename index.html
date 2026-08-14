@@ -155,9 +155,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .desktop-btn:hover { background: #667eea; color: white; border-color: #667eea; }
 .desktop-btn.active { background: #667eea; color: white; border-color: #667eea; }
 .desktop-info { font-size: 11px; color: #95a5a6; margin-left: auto; }
-.desktop-view { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #2d3436; padding: 8px; min-height: 0; }
-.desktop-screenshot { max-width: 100%; max-height: 100%; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; }
+.desktop-view { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #2d3436; padding: 4px; min-height: 0; position: relative; }
+.desktop-screenshot { max-width: 100%; max-height: 100%; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; touch-action: none; pointer-events: auto; }
+.desktop-screenshot.dragging { cursor: grabbing; }
 .desktop-loading { color: #b2bec3; font-size: 14px; }
+.desktop-rotate-hint { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #2d3436; color: #b2bec3; font-size: 16px; align-items: center; justify-content: center; flex-direction: column; text-align: center; z-index: 10; }
+/* 手机全屏 + 横屏 */
+@media (max-width: 768px) and (orientation: portrait) {
+    .rc-panel { max-width: 100%; max-height: 100vh; border-radius: 0; height: 100vh; }
+    .rc-overlay { padding: 0; }
+    .desktop-rotate-hint.show { display: flex; }
+}
 /* 协议弹窗 */
 .agreement-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9500; display: none; align-items: center; justify-content: center; padding: 20px; }
 .agreement-modal.show { display: flex; }
@@ -247,12 +255,14 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
             <!-- 远程桌面 -->
             <div class="rc-tab-content" id="rcContentDesktop">
                 <div class="desktop-toolbar">
-                    <button class="desktop-btn" onclick="refreshScreenshot()">🔄 刷新</button>
-                    <button class="desktop-btn" onclick="toggleAutoRefresh(this)" id="autoRefreshBtn">⏯️ 自动刷新</button>
-                    <span class="desktop-info" id="desktopInfo">未连接</span>
+                    <span class="desktop-info" id="desktopInfo">🔄 实时刷新中...</span>
                 </div>
                 <div class="desktop-view" id="desktopView">
-                    <span class="desktop-loading">点击"刷新"查看屏幕</span>
+                    <span class="desktop-loading">⏳ 正在获取屏幕...</span>
+                </div>
+                <div class="desktop-rotate-hint" id="desktopRotateHint">
+                    <div style="font-size:48px; margin-bottom:16px;">📱</div>
+                    <div>请横屏使用远程桌面</div>
                 </div>
             </div>
         </div>
@@ -1077,9 +1087,57 @@ let desktopRefreshTimer = null;
 let desktopScreenWidth = 0;
 let desktopScreenHeight = 0;
 
+// 检测是否为移动设备
+function isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 768;
+}
+
+// 进入全屏 + 锁定横屏
+async function enterFullscreenLandscape() {
+    const el = document.documentElement;
+    try {
+        if (el.requestFullscreen) await el.requestFullscreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch(e) {}
+    // 尝试锁定横屏（需要全屏后才能调用）
+    try {
+        if (screen.orientation && screen.orientation.lock) {
+            await screen.orientation.lock('landscape');
+        }
+    } catch(e) {}
+}
+
+// 退出全屏 + 解锁横屏
+function exitFullscreenLandscape() {
+    try {
+        if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
+    } catch(e) {}
+    try {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    } catch(e) {}
+}
+
+// 检查横竖屏状态，竖屏时显示提示
+function checkOrientation() {
+    const hint = document.getElementById('desktopRotateHint');
+    if (!hint) return;
+    const isPortrait = window.innerHeight > window.innerWidth;
+    if (isMobile() && isPortrait && document.getElementById('rcContentDesktop').classList.contains('active')) {
+        hint.classList.add('show');
+    } else {
+        hint.classList.remove('show');
+    }
+}
+
 // 打开远程控制（先检查协议）
 async function openRemoteControl() {
     document.getElementById('rcOverlay').classList.add('show');
+    // 手机端进入全屏 + 横屏
+    if (isMobile()) {
+        await enterFullscreenLandscape();
+    }
+    window.addEventListener('resize', checkOrientation);
     // 检查协议状态
     if (!rcAgreementChecked) {
         try {
@@ -1096,11 +1154,25 @@ async function openRemoteControl() {
 
 function closeRemoteControl() {
     document.getElementById('rcOverlay').classList.remove('show');
-    // 停止自动刷新
+    stopDesktopRefresh();
+    window.removeEventListener('resize', checkOrientation);
+    // 手机端退出全屏
+    if (isMobile()) {
+        exitFullscreenLandscape();
+    }
+}
+
+// 停止桌面实时刷新
+function stopDesktopRefresh() {
     if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
     desktopAutoRefresh = false;
-    const btn = document.getElementById('autoRefreshBtn');
-    if (btn) { btn.classList.remove('active'); btn.textContent = '⏯️ 自动刷新'; }
+}
+
+// 启动桌面实时刷新
+function startDesktopRefresh() {
+    if (desktopAutoRefresh) return;
+    desktopAutoRefresh = true;
+    refreshScreenshot();
 }
 
 // 协议弹窗
@@ -1147,6 +1219,8 @@ async function acceptAgreement() {
 
 // 切换标签页
 function switchRcTab(tab) {
+    // 离开桌面标签时停止刷新
+    if (tab !== 'desktop') stopDesktopRefresh();
     document.querySelectorAll('.rc-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.rc-tab-content').forEach(c => c.classList.remove('active'));
     if (tab === 'terminal') {
@@ -1156,7 +1230,8 @@ function switchRcTab(tab) {
     } else if (tab === 'desktop') {
         document.getElementById('rcTabDesktop').classList.add('active');
         document.getElementById('rcContentDesktop').classList.add('active');
-        if (!desktopScreenWidth) refreshScreenshot();
+        checkOrientation();
+        startDesktopRefresh();
     }
 }
 
@@ -1281,49 +1356,132 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ==================== 远程桌面鼠标控制 ====================
+let desktopPrevUrl = null;  // 上一帧截图 URL（用于释放）
+
+// 静默刷新截图：不显示加载文字，直接替换图片，实现无闪烁实时刷新
 async function refreshScreenshot() {
     if (!rcAgreed) { showAgreement(); return; }
     const view = document.getElementById('desktopView');
     const info = document.getElementById('desktopInfo');
-    view.innerHTML = '<span class="desktop-loading">⏳ 正在截屏...</span>';
     try {
         const resp = await fetch(api('/api/screenshot') + '?t=' + Date.now(), { credentials: 'include' });
         if (resp.status === 403) {
             const data = await resp.json().catch(() => ({}));
             if (data.need_agreement) { showAgreement(); return; }
-            view.innerHTML = '<span class="desktop-loading">❌ 权限不足</span>';
+            if (view.querySelector('.desktop-loading') || !view.querySelector('.desktop-screenshot')) {
+                view.innerHTML = '<span class="desktop-loading">❌ 权限不足</span>';
+            }
             return;
         }
-        if (!resp.ok) { view.innerHTML = '<span class="desktop-loading">❌ 截屏失败</span>'; return; }
+        if (!resp.ok) {
+            if (!view.querySelector('.desktop-screenshot')) {
+                view.innerHTML = '<span class="desktop-loading">❌ 截屏失败</span>';
+            }
+            return;
+        }
         desktopScreenWidth = parseInt(resp.headers.get('X-Screen-Width') || '0');
         desktopScreenHeight = parseInt(resp.headers.get('X-Screen-Height') || '0');
         const blob = await resp.blob();
         const url = URL.createObjectURL(blob);
-        view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" src="' + url + '" alt="屏幕截图">';
-        info.textContent = '屏幕: ' + desktopScreenWidth + 'x' + desktopScreenHeight;
-        // 绑定鼠标事件
-        const img = document.getElementById('screenshotImg');
-        img.addEventListener('click', onDesktopClick);
-        img.addEventListener('contextmenu', (e) => { e.preventDefault(); onDesktopAction(e, 'right'); });
-        img.addEventListener('dblclick', (e) => { e.preventDefault(); onDesktopAction(e, 'dblclick'); });
+        // 静默替换：直接更新 img 的 src，不重建 DOM，避免闪烁
+        let img = document.getElementById('screenshotImg');
+        if (img) {
+            img.src = url;  // 直接换 src，无闪烁
+        } else {
+            // 首次加载：创建图片元素
+            view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" src="' + url + '" alt="屏幕截图" draggable="false" ondragstart="return false">';
+            img = document.getElementById('screenshotImg');
+            // 鼠标事件（PC 端）
+            img.addEventListener('click', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'click'); });
+            img.addEventListener('contextmenu', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'right'); });
+            img.addEventListener('dblclick', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'dblclick'); });
+            // 触摸事件（手机端）：阻止浏览器拖拽和长按菜单，映射为鼠标操作
+            img.addEventListener('touchstart', onTouchStart, { passive: false });
+            img.addEventListener('touchmove', onTouchMove, { passive: false });
+            img.addEventListener('touchend', onTouchEnd, { passive: false });
+            img.addEventListener('touchcancel', onTouchEnd, { passive: false });
+        }
+        info.textContent = '🔄 实时刷新中 · ' + desktopScreenWidth + 'x' + desktopScreenHeight;
+        // 释放上一帧 URL
+        if (desktopPrevUrl) { URL.revokeObjectURL(desktopPrevUrl); }
+        desktopPrevUrl = url;
     } catch(e) {
-        view.innerHTML = '<span class="desktop-loading">❌ 网络错误</span>';
+        if (!view.querySelector('.desktop-screenshot')) {
+            view.innerHTML = '<span class="desktop-loading">❌ 网络错误</span>';
+        }
+    } finally {
+        // 继续实时刷新（1.5 秒间隔）
+        if (desktopAutoRefresh) {
+            desktopRefreshTimer = setTimeout(refreshScreenshot, 1500);
+        }
     }
 }
 
-function onDesktopClick(e) {
-    onDesktopAction(e, 'click');
+// ==================== 触摸事件（手机端鼠标模拟） ====================
+let touchStartX = 0, touchStartY = 0;
+let touchCurrentX = 0, touchCurrentY = 0;
+let touchStartTime = 0;
+let touchMoved = false;
+let longPressTimer = null;
+let longPressFired = false;
+const LONG_PRESS_MS = 500;    // 长按判定时间
+const MOVE_THRESHOLD = 10;    // 移动阈值（像素），超过则判定为拖拽而非点击
+
+function onTouchStart(e) {
+    e.preventDefault();  // 阻止浏览器默认行为（拖拽图片、长按菜单）
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchStartX = t.clientX;
+    touchStartY = t.clientY;
+    touchCurrentX = t.clientX;
+    touchCurrentY = t.clientY;
+    touchStartTime = Date.now();
+    touchMoved = false;
+    longPressFired = false;
+    // 启动长按定时器
+    if (longPressTimer) clearTimeout(longPressTimer);
+    longPressTimer = setTimeout(() => {
+        longPressFired = true;
+        // 长按 = 右键单击
+        doMouseAction(touchCurrentX, touchCurrentY, 'right');
+    }, LONG_PRESS_MS);
 }
 
-async function onDesktopAction(e, action) {
+function onTouchMove(e) {
+    e.preventDefault();  // 阻止页面滚动和图片拖拽
+    if (e.touches.length !== 1) return;
+    const t = e.touches[0];
+    touchCurrentX = t.clientX;
+    touchCurrentY = t.clientY;
+    const dx = t.clientX - touchStartX;
+    const dy = t.clientY - touchStartY;
+    if (Math.sqrt(dx*dx + dy*dy) > MOVE_THRESHOLD) {
+        touchMoved = true;
+        // 移动则取消长按
+        if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    }
+}
+
+function onTouchEnd(e) {
+    e.preventDefault();
+    if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; }
+    if (longPressFired) return;  // 长按已触发右键，不再处理
+    if (e.touches.length > 0) return;  // 还有手指在屏幕上
+    const elapsed = Date.now() - touchStartTime;
+    if (!touchMoved && elapsed < LONG_PRESS_MS) {
+        // 短按 = 左键单击
+        doMouseAction(touchCurrentX, touchCurrentY, 'click');
+    }
+}
+
+// 执行鼠标操作（统一入口，PC 和手机共用）
+async function doMouseAction(clientX, clientY, action) {
     if (!rcAgreed) return;
     const img = document.getElementById('screenshotImg');
     if (!img) return;
     const rect = img.getBoundingClientRect();
-    // 计算相对坐标（0~1）
-    const relX = (e.clientX - rect.left) / rect.width;
-    const relY = (e.clientY - rect.top) / rect.height;
-    // 限制在 0~1 范围
+    const relX = (clientX - rect.left) / rect.width;
+    const relY = (clientY - rect.top) / rect.height;
     const x = Math.max(0, Math.min(1, relX));
     const y = Math.max(0, Math.min(1, relY));
     try {
@@ -1338,39 +1496,21 @@ async function onDesktopAction(e, action) {
             if (data.need_agreement) showAgreement();
             return;
         }
+        // 鼠标操作后立即刷新一帧（不影响实时刷新循环）
         if (resp.ok && desktopAutoRefresh) {
-            // 操作后短暂延迟再刷新截图
-            setTimeout(refreshScreenshot, 300);
+            setTimeout(refreshScreenshot, 200);
         }
     } catch(err) { /* 忽略 */ }
-}
-
-function toggleAutoRefresh(btn) {
-    desktopAutoRefresh = !desktopAutoRefresh;
-    if (desktopAutoRefresh) {
-        btn.classList.add('active');
-        btn.textContent = '⏸️ 停止刷新';
-        autoRefreshLoop();
-    } else {
-        btn.classList.remove('active');
-        btn.textContent = '⏯️ 自动刷新';
-        if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
-    }
-}
-
-function autoRefreshLoop() {
-    if (!desktopAutoRefresh) return;
-    refreshScreenshot().then(() => {
-        if (desktopAutoRefresh) {
-            desktopRefreshTimer = setTimeout(autoRefreshLoop, 2000);
-        }
-    });
 }
 
 // 点击远程控制面板背景关闭
 document.getElementById('rcOverlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('rcOverlay')) closeRemoteControl();
 });
+// 阻止远程桌面区域的所有浏览器右键菜单
+document.getElementById('rcContentDesktop').addEventListener('contextmenu', (e) => e.preventDefault());
+// 阻止拖拽
+document.getElementById('rcContentDesktop').addEventListener('dragstart', (e) => e.preventDefault());
 
 async function init() {
     // 先检测服务器是否可达（避免从 file:// 打开时跨域请求被静默阻止）
