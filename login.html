@@ -19,13 +19,37 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .login-error { background: #ffeaa7; color: #d63031; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 16px; display: none; }
 .login-error.show { display: block; }
 .login-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; margin-top: 8px; }
-.login-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
+.login-btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,0.4); }
 .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; box-shadow: none; }
 .login-footer { text-align: center; font-size: 12px; color: #b2bec3; margin-top: 24px; }
 .login-spinner { display: none; }
 .login-spinner.show { display: inline-block; }
 .login-spinner::after { content: ''; display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-left: 6px; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* 拼图验证码模态框 */
+.captcha-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; align-items: center; justify-content: center; }
+.captcha-modal.show { display: flex; }
+.captcha-modal-content { background: white; border-radius: 16px; padding: 24px; width: 100%; max-width: 360px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; }
+@keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.captcha-title { font-size: 16px; color: #2c3e50; margin-bottom: 16px; text-align: center; font-weight: 600; }
+.captcha-close { float: right; font-size: 20px; color: #b2bec3; cursor: pointer; line-height: 1; margin-top: -4px; }
+.captcha-close:hover { color: #d63031; }
+.puzzle-container { position: relative; width: 300px; height: 160px; background: #ecf0f1; border-radius: 8px; overflow: hidden; margin: 0 auto 16px; user-select: none; }
+.puzzle-canvas { position: absolute; top: 0; left: 0; }
+.puzzle-piece { position: absolute; top: 0; cursor: grab; filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3)); }
+.puzzle-piece:active { cursor: grabbing; }
+.slider-track { position: relative; width: 100%; height: 40px; background: #ecf0f1; border-radius: 20px; margin-top: 8px; }
+.slider-fill { position: absolute; top: 0; left: 0; height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 20px; width: 0; transition: width 0.1s; }
+.slider-btn { position: absolute; top: 0; left: 0; width: 40px; height: 40px; background: white; border: 2px solid #667eea; border-radius: 50%; cursor: grab; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #667eea; box-shadow: 0 2px 6px rgba(0,0,0,0.15); transition: transform 0.1s; z-index: 2; }
+.slider-btn:active { cursor: grabbing; }
+.slider-btn:hover { transform: scale(1.05); }
+.slider-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 13px; color: #95a5a6; pointer-events: none; transition: opacity 0.2s; }
+.captcha-status { text-align: center; font-size: 13px; margin-top: 12px; min-height: 18px; }
+.captcha-status.success { color: #27ae60; }
+.captcha-status.error { color: #e74c3c; }
+.captcha-refresh-link { text-align: center; font-size: 12px; color: #667eea; cursor: pointer; margin-top: 8px; text-decoration: underline; }
+@keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-8px); } 75% { transform: translateX(8px); } }
 </style>
 </head>
 <body>
@@ -41,6 +65,24 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
     <div class="login-footer">FileTransfer v2.0 · 安全传输</div>
 </div>
 
+<!-- 拼图验证码模态框 -->
+<div class="captcha-modal" id="captchaModal">
+    <div class="captcha-modal-content">
+        <div class="captcha-title">🧩 滑动拼图完成验证<span class="captcha-close" onclick="closeCaptcha()">&times;</span></div>
+        <div class="puzzle-container" id="puzzleContainer">
+            <canvas class="puzzle-canvas" id="puzzleBg" width="300" height="160"></canvas>
+            <canvas class="puzzle-piece" id="puzzlePiece" width="54" height="160"></canvas>
+        </div>
+        <div class="slider-track" id="sliderTrack">
+            <div class="slider-fill" id="sliderFill"></div>
+            <div class="slider-hint" id="sliderHint">向右拖动滑块</div>
+            <div class="slider-btn" id="sliderBtn">→</div>
+        </div>
+        <div class="captcha-status" id="captchaStatus"></div>
+        <div class="captcha-refresh-link" onclick="refreshCaptcha()">看不清？换一张</div>
+    </div>
+</div>
+
 <script>
 const API_BASE = 'https://d94f6dc.r29.cpolar.top';
 
@@ -54,40 +96,348 @@ const btn = document.getElementById('loginBtn');
 const btnSpinner = document.getElementById('btnSpinner');
 const errorBox = document.getElementById('errorBox');
 
+// ==================== 拼图验证码 ====================
+const PUZZLE_W = 54;          // 拼图块宽度
+const PUZZLE_H = 160;         // 拼图块高度
+const TRACK_W = 300;          // 背景画布宽度
+const TOLERANCE = 5;          // 对齐容差（像素）
+
+let puzzleTargetX = 0;        // 拼图目标 X 位置
+let puzzleCurrentX = 0;       // 拼图当前 X 位置
+let isDragging = false;
+let dragStartX = 0;
+let pieceStartX = 0;
+let captchaVerified = false;  // 是否已通过验证
+let pendingLogin = false;      // 是否有待登录请求等待验证
+
+const bgCanvas = document.getElementById('puzzleBg');
+const bgCtx = bgCanvas.getContext('2d');
+const pieceCanvas = document.getElementById('puzzlePiece');
+const pieceCtx = pieceCanvas.getContext('2d');
+const sliderBtn = document.getElementById('sliderBtn');
+const sliderFill = document.getElementById('sliderFill');
+const sliderHint = document.getElementById('sliderHint');
+const sliderTrack = document.getElementById('sliderTrack');
+const captchaModal = document.getElementById('captchaModal');
+const captchaStatus = document.getElementById('captchaStatus');
+
+// 生成随机颜色渐变背景 + 拼图块
+function generatePuzzle() {
+    captchaVerified = false;
+    puzzleCurrentX = 0;
+    sliderBtn.style.left = '0px';
+    sliderFill.style.width = '0px';
+    sliderHint.style.opacity = '1';
+    captchaStatus.textContent = '';
+    captchaStatus.className = 'captcha-status';
+    pieceCanvas.style.left = '0px';
+
+    // 随机渐变色
+    const hue1 = Math.floor(Math.random() * 360);
+    const hue2 = (hue1 + 60 + Math.floor(Math.random() * 120)) % 360;
+    const color1 = `hsl(${hue1}, 70%, 60%)`;
+    const color2 = `hsl(${hue2}, 70%, 50%)`;
+
+    // 绘制背景
+    const grad = bgCtx.createLinearGradient(0, 0, TRACK_W, PUZZLE_H);
+    grad.addColorStop(0, color1);
+    grad.addColorStop(1, color2);
+    bgCtx.fillStyle = grad;
+    bgCtx.fillRect(0, 0, TRACK_W, PUZZLE_H);
+
+    // 添加随机装饰图形
+    for (let i = 0; i < 5; i++) {
+        bgCtx.beginPath();
+        bgCtx.arc(
+            Math.random() * TRACK_W,
+            Math.random() * PUZZLE_H,
+            10 + Math.random() * 30,
+            0, Math.PI * 2
+        );
+        bgCtx.fillStyle = `hsla(${Math.random() * 360}, 70%, 70%, 0.4)`;
+        bgCtx.fill();
+    }
+
+    // 随机目标位置（留出拼图宽度 + 边距）
+    puzzleTargetX = 80 + Math.floor(Math.random() * (TRACK_W - PUZZLE_W - 100));
+
+    // 在背景上绘制目标凹槽（半透明黑）
+    bgCtx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    drawPuzzleShape(bgCtx, puzzleTargetX, 0, PUZZLE_W, PUZZLE_H);
+
+    // 绘制拼图块（从背景截取）
+    pieceCtx.clearRect(0, 0, PUZZLE_W, PUZZLE_H);
+    // 重新绘制背景到 pieceCanvas（不含凹槽）
+    const pieceGrad = pieceCtx.createLinearGradient(0, 0, TRACK_W, PUZZLE_H);
+    pieceGrad.addColorStop(0, color1);
+    pieceGrad.addColorStop(1, color2);
+    pieceCtx.fillStyle = pieceGrad;
+    pieceCtx.fillRect(0, 0, PUZZLE_W, PUZZLE_H);
+    for (let i = 0; i < 5; i++) {
+        pieceCtx.beginPath();
+        pieceCtx.arc(
+            Math.random() * TRACK_W - 0,
+            Math.random() * PUZZLE_H,
+            10 + Math.random() * 30,
+            0, Math.PI * 2
+        );
+        pieceCtx.fillStyle = `hsla(${Math.random() * 360}, 70%, 70%, 0.4)`;
+        pieceCtx.fill();
+    }
+    // 用拼图形状裁剪
+    pieceCtx.globalCompositeOperation = 'destination-in';
+    drawPuzzleShape(pieceCtx, 0, 0, PUZZLE_W, PUZZLE_H);
+    pieceCtx.globalCompositeOperation = 'source-over';
+    // 描边
+    pieceCtx.strokeStyle = 'rgba(255,255,255,0.8)';
+    pieceCtx.lineWidth = 2;
+    drawPuzzleShape(pieceCtx, 0, 0, PUZZLE_W, PUZZLE_H, true);
+}
+
+// 绘制拼图形状（带凸起）
+function drawPuzzleShape(ctx, x, y, w, h, strokeOnly) {
+    const r = 8;          // 凸起半径
+    const tabY = h * 0.4; // 凸起位置
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    // 右上凸起
+    ctx.lineTo(x + w * 0.35, y);
+    ctx.arc(x + w * 0.5, y, r, Math.PI, 0, false);
+    ctx.lineTo(x + w, y);
+    ctx.lineTo(x + w, y + tabY - r);
+    // 右侧凸起
+    ctx.arc(x + w, y + tabY, r, -Math.PI / 2, Math.PI / 2, false);
+    ctx.lineTo(x + w, y + h);
+    ctx.lineTo(x, y + h);
+    ctx.lineTo(x, y + tabY + r);
+    // 左侧凹陷
+    ctx.arc(x, y + tabY, r, Math.PI / 2, -Math.PI / 2, true);
+    ctx.closePath();
+    if (strokeOnly) {
+        ctx.stroke();
+    } else {
+        ctx.fill();
+    }
+}
+
+function openCaptcha() {
+    captchaModal.classList.add('show');
+    generatePuzzle();
+}
+
+function closeCaptcha() {
+    captchaModal.classList.remove('show');
+    pendingLogin = false;
+    btn.disabled = false;
+    btnSpinner.classList.remove('show');
+}
+
+function refreshCaptcha() {
+    generatePuzzle();
+}
+
+// 验证拼图位置
+function verifyPuzzle() {
+    const diff = Math.abs(puzzleCurrentX - puzzleTargetX);
+    if (diff <= TOLERANCE) {
+        captchaVerified = true;
+        captchaStatus.textContent = '✅ 验证通过';
+        captchaStatus.className = 'captcha-status success';
+        sliderHint.style.opacity = '0';
+        sliderBtn.style.borderColor = '#27ae60';
+        sliderBtn.style.color = '#27ae60';
+        sliderBtn.textContent = '✓';
+        // 吸附到正确位置
+        puzzleCurrentX = puzzleTargetX;
+        pieceCanvas.style.left = puzzleTargetX + 'px';
+        sliderBtn.style.left = puzzleTargetX + 'px';
+        sliderFill.style.width = (puzzleTargetX + 40) + 'px';
+        sliderFill.style.background = 'linear-gradient(90deg, #27ae60, #2ecc71)';
+        // 延迟关闭并自动继续登录
+        setTimeout(() => {
+            captchaModal.classList.remove('show');
+            const shouldLogin = pendingLogin;
+            pendingLogin = false;
+            if (shouldLogin) {
+                submitLogin();
+            }
+        }, 600);
+        return true;
+    } else {
+        captchaStatus.textContent = '❌ 验证失败，请重试';
+        captchaStatus.className = 'captcha-status error';
+        // 抖动效果
+        sliderTrack.style.animation = 'none';
+        setTimeout(() => {
+            sliderTrack.style.animation = 'shake 0.3s';
+        }, 10);
+        // 重置
+        setTimeout(() => {
+            generatePuzzle();
+        }, 800);
+        return false;
+    }
+}
+
+// 滑块拖动事件（鼠标）
+sliderBtn.addEventListener('mousedown', startDrag);
+sliderBtn.addEventListener('touchstart', startDrag, { passive: false });
+
+function startDrag(e) {
+    if (captchaVerified) return;
+    e.preventDefault();
+    isDragging = true;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    dragStartX = clientX;
+    pieceStartX = puzzleCurrentX;
+    sliderHint.style.opacity = '0';
+    captchaStatus.textContent = '';
+}
+
+document.addEventListener('mousemove', onDrag);
+document.addEventListener('touchmove', onDrag, { passive: false });
+
+function onDrag(e) {
+    if (!isDragging) return;
+    e.preventDefault();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const delta = clientX - dragStartX;
+    let newX = pieceStartX + delta;
+    // 限制范围
+    const maxX = TRACK_W - PUZZLE_W;
+    if (newX < 0) newX = 0;
+    if (newX > maxX) newX = maxX;
+    puzzleCurrentX = newX;
+    pieceCanvas.style.left = newX + 'px';
+    sliderBtn.style.left = newX + 'px';
+    sliderFill.style.width = (newX + 40) + 'px';
+}
+
+document.addEventListener('mouseup', endDrag);
+document.addEventListener('touchend', endDrag);
+
+function endDrag() {
+    if (!isDragging) return;
+    isDragging = false;
+    if (puzzleCurrentX > 5) {
+        verifyPuzzle();
+    } else {
+        sliderHint.style.opacity = '1';
+    }
+}
+
+// ==================== 登录逻辑 ====================
+let lockCountdown = 0;
+let lockTimer = null;
+
+function startLockCountdown(seconds) {
+    lockCountdown = seconds;
+    btn.disabled = true;
+    updateLockDisplay();
+    if (lockTimer) clearInterval(lockTimer);
+    lockTimer = setInterval(() => {
+        lockCountdown--;
+        if (lockCountdown <= 0) {
+            clearInterval(lockTimer);
+            lockTimer = null;
+            lockCountdown = 0;
+            btn.disabled = false;
+            errorBox.classList.remove('show');
+            input.focus();
+        } else {
+            updateLockDisplay();
+        }
+    }, 1000);
+}
+
+function updateLockDisplay() {
+    const m = Math.floor(lockCountdown / 60);
+    const s = lockCountdown % 60;
+    const timeStr = m > 0 ? m + '分' + s + '秒' : s + '秒';
+    errorBox.textContent = '🔒 账户已锁定，请 ' + timeStr + ' 后再试';
+    errorBox.classList.add('show');
+}
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (lockCountdown > 0) return;
     const password = input.value;
     if (!password) return;
-    
+
+    // 如果未通过人机验证，弹出拼图验证
+    if (!captchaVerified) {
+        pendingLogin = true;
+        openCaptcha();
+        return;
+    }
+
+    // 验证已通过，重置标记并提交
+    captchaVerified = false;
+    submitLogin();
+});
+
+async function submitLogin() {
+    const password = input.value;
+    if (!password) return;
+
     btn.disabled = true;
     btnSpinner.classList.add('show');
     errorBox.classList.remove('show');
-    
+
     try {
         const resp = await fetch(api('/api/login'), {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({password}),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
             credentials: 'include'
         });
-        
-        if (resp.ok) {
-            const data = await resp.json();
-            if (data.success) {
-                window.location.href = 'index.html';
-                return;
-            }
+
+        const data = await resp.json().catch(() => ({}));
+
+        if (resp.ok && data.success) {
+            window.location.href = 'index.html';
+            return;
         }
-        errorBox.textContent = '密码错误，请重试';
+
+        // 锁定状态（429）
+        if (resp.status === 429) {
+            const lockRemaining = data.lock_remaining || 0;
+            if (lockRemaining > 0) {
+                startLockCountdown(lockRemaining);
+            } else {
+                errorBox.textContent = data.error || '操作过快，请稍后再试';
+                errorBox.classList.add('show');
+            }
+            input.value = '';
+            return;
+        }
+
+        // 密码错误（401）
+        if (resp.status === 401) {
+            errorBox.textContent = data.error || '密码错误，请重试';
+            errorBox.classList.add('show');
+            input.value = '';
+            input.focus();
+            return;
+        }
+
+        errorBox.textContent = data.error || '登录失败，请重试';
         errorBox.classList.add('show');
-        input.value = '';
-        input.focus();
-    } catch(err) {
+    } catch (err) {
         errorBox.textContent = '网络错误，请检查服务器状态';
         errorBox.classList.add('show');
     } finally {
-        btn.disabled = false;
+        if (lockCountdown === 0) {
+            btn.disabled = false;
+        }
         btnSpinner.classList.remove('show');
+    }
+}
+
+// 点击模态框背景关闭
+captchaModal.addEventListener('click', (e) => {
+    if (e.target === captchaModal) {
+        closeCaptcha();
     }
 });
 </script>

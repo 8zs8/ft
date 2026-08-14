@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -328,8 +328,12 @@ function renderConnectionInfo() {
     return html;
 }
 
+function getCsrfToken() {
+    return serverInfo.csrf_token || '';
+}
+
 function logout() {
-    fetch(api('/api/logout'), { method: 'POST', credentials: 'include' }).then(() => {
+    fetch(api('/api/logout'), { method: 'POST', credentials: 'include', headers: {'X-CSRF-Token': getCsrfToken()} }).then(() => {
         window.location.href = 'login.html';
     }).catch(() => {
         window.location.href = 'login.html';
@@ -661,15 +665,55 @@ function uploadFile(file) {
 
     xhr.open('POST', api('/api/upload'));
     xhr.withCredentials = true;
+    xhr.setRequestHeader('X-CSRF-Token', getCsrfToken());
     xhr.send(formData);
 }
 
 async function init() {
-    await loadInfo();
-    checkSession();
-    loadDrives();
+    // 先检测服务器是否可达（避免从 file:// 打开时跨域请求被静默阻止）
+    let reachable = false;
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const resp = await fetch(api('/api/info'), {
+            signal: controller.signal,
+            cache: 'no-store',
+            credentials: 'include'
+        });
+        clearTimeout(timeoutId);
+        reachable = true;
+        if (resp.status === 401) {
+            // 未登录，跳转到登录页
+            window.location.href = 'login.html';
+            return;
+        }
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        serverInfo = await resp.json();
+    } catch(e) {
+        // 服务器不可达：显示连接错误页面
+        showConnectionError(e);
+        return;
+    }
 
+    // 服务器可达，继续加载
+    loadDrives();
     connectionCheckInterval = setInterval(checkConnection, 5000);
+}
+
+// 服务器不可达时显示连接错误页面（替代静默失败）
+function showConnectionError(err) {
+    const isLocalFile = window.location.protocol === 'file:';
+    const hint = isLocalFile
+        ? '检测到您正在从本地文件打开此页面。<br>由于浏览器安全策略，本地文件无法直接访问远程服务器。<br><br>请通过服务器地址访问：<br><strong>' + API_BASE + '</strong>'
+        : '无法连接到服务器：<br><strong>' + API_BASE + '</strong><br><br>请检查：<br>• 服务器是否已启动<br>• 网络连接是否正常<br>• 隧道地址是否正确';
+
+    document.getElementById('app').innerHTML =
+        '<div class="card" style="text-align:center; padding:40px;">' +
+        '<div style="font-size:48px; margin-bottom:16px;">🔌</div>' +
+        '<h2 style="color:#e74c3c; margin-bottom:16px;">连接服务器失败</h2>' +
+        '<div style="color:#636e72; font-size:14px; line-height:1.8;">' + hint + '</div>' +
+        '<button class="btn btn-primary" style="margin-top:20px; max-width:200px;" onclick="location.reload()">🔄 重新尝试</button>' +
+        '</div>';
 }
 
 init();
