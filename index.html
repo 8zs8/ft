@@ -96,11 +96,28 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .qr-hint { font-size: 12px; opacity: 0.9; line-height: 1.5; }
 .back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; color: #667eea; margin-right: 8px; }
 .back-btn:hover { background: #f0f3ff; }
-.search-bar { margin: 0 0 12px 0; }
-.search-input { width: 100%; padding: 10px 14px 10px 38px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; background: #f8f9fa url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2395a5a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center; }
+.search-bar { margin: 0 0 12px 0; position: relative; }
+.search-input { width: 100%; padding: 10px 38px 10px 38px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; background: #f8f9fa url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2395a5a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center; }
 .search-input:focus { border-color: #667eea; background-color: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+.search-input.searching { border-color: #00b894; background-color: white; }
 .search-input::placeholder { color: #b2bec3; }
-.search-count { font-size: 12px; color: #95a5a6; margin: -6px 0 12px 4px; }
+.search-clear { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 24px; height: 24px; border: none; background: #dfe6e9; color: #636e72; border-radius: 50%; cursor: pointer; font-size: 14px; line-height: 1; display: none; align-items: center; justify-content: center; }
+.search-clear.show { display: flex; }
+.search-clear:hover { background: #b2bec3; color: #2d3436; }
+.search-hint { font-size: 11px; color: #b2bec3; margin: -8px 0 10px 4px; }
+.search-progress { background: #f8f9fa; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; border: 1px solid #ecf0f1; }
+.search-progress-info { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: #636e72; margin-bottom: 6px; }
+.search-progress-count { font-weight: 600; color: #2c3e50; }
+.search-progress-bar { width: 100%; height: 6px; background: #ecf0f1; border-radius: 3px; overflow: hidden; position: relative; }
+.search-progress-fill { height: 100%; background: linear-gradient(90deg, #667eea, #764ba2); border-radius: 3px; width: 0; transition: width 0.3s; }
+.search-progress-fill.indeterminate { width: 40%; animation: indeterminate 1.2s ease-in-out infinite; }
+@keyframes indeterminate { 0% { margin-left: -40%; } 50% { margin-left: 100%; } 100% { margin-left: 100%; } }
+.search-progress-fill.done { width: 100%; background: linear-gradient(90deg, #00b894, #00cec9); }
+.search-progress-current { font-size: 11px; color: #95a5a6; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search-cancel { background: #ffeaa7; color: #2d3436; border: none; padding: 3px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; }
+.search-cancel:hover { background: #fdcb6e; }
+.search-meta { font-size: 12px; color: #95a5a6; margin: -6px 0 12px 4px; }
+.search-rel { font-size: 11px; color: #95a5a6; margin-top: 2px; word-break: break-all; }
 .connection-lost { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.95); color: white; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 9999; padding: 20px; text-align: center; }
 .connection-lost.show { display: flex; }
 .connection-lost h2 { font-size: 24px; margin-bottom: 16px; }
@@ -148,8 +165,14 @@ let showHidden = false;
 let showSystem = false;
 let tasks = [];
 let taskIdCounter = 0;
-let currentFiles = [];   // 当前目录文件列表缓存（供搜索过滤使用）
+let currentFiles = [];   // 当前目录文件列表缓存
 let searchKeyword = '';  // 当前搜索关键字
+let searchResults = [];  // 搜索结果累积列表
+let searchAbort = null;  // 当前搜索请求的 AbortController
+let searchTimer = null;  // 输入防抖计时器
+let searchActive = false;       // 是否正在搜索
+let searchToken = 0;            // 搜索令牌（用于丢弃被新搜索取代的旧请求的状态更新）
+let searchProgress = { scanned: 0, matched: 0, current_dir: '', done: false, truncated: false };
 
 function showToast(msg) {
     const toast = document.createElement('div');
@@ -505,13 +528,16 @@ function renderFileList(data, path) {
         fileListHtml += '<div class="permission-denied">⚠️ ' + data.permission_denied.length + ' 个项目因权限不足无法显示</div>';
     }
 
-    // 搜索框（仅当有文件时显示）
-    if (currentFiles.length > 0) {
-        fileListHtml += '<div class="search-bar"><input type="text" id="searchInput" class="search-input" placeholder="搜索当前目录..." value="' + escapeHtml(searchKeyword) + '" autocomplete="off"></div>';
-        fileListHtml += '<div id="searchCount" class="search-count"></div>';
+    // 搜索框（非根目录时显示，搜索范围包含所有子目录）
+    if (!isRoot) {
+        fileListHtml += '<div class="search-bar">' +
+            '<input type="text" id="searchInput" class="search-input' + (searchActive ? ' searching' : '') + '" placeholder="搜索此目录及所有子目录... (支持 * ? 通配符)" value="' + escapeHtml(searchKeyword) + '" autocomplete="off">' +
+            '<button class="search-clear' + (searchKeyword ? ' show' : '') + '" id="searchClear" onclick="clearSearch()" title="清除">×</button>' +
+            '</div>';
+        fileListHtml += '<div class="search-hint">💡 搜索范围：当前目录及其所有子目录 · 支持通配符如 *.jpg 或 *.txt</div>';
     }
 
-    fileListHtml += '<div id="fileListContainer">' + renderFileItems(getFilteredFiles()) + '</div>';
+    fileListHtml += '<div id="fileListContainer">' + renderListContainer() + '</div>';
     fileListHtml += '</div>';
 
     document.getElementById('app').innerHTML = header + uploadArea + breadcrumb + optionsBar + fileListHtml + '<div id="taskList"></div>';
@@ -522,20 +548,75 @@ function renderFileList(data, path) {
     updateTaskList();
 }
 
-// 根据搜索关键字过滤文件列表
-function getFilteredFiles() {
-    if (!searchKeyword) return currentFiles;
-    const kw = searchKeyword.toLowerCase();
-    return currentFiles.filter(f => (f.name || '').toLowerCase().includes(kw));
+// 根据搜索状态渲染列表容器内容
+function renderListContainer() {
+    if (!searchKeyword) {
+        return renderFileItems(currentFiles);
+    }
+    return renderSearchPanel();
 }
 
-// 渲染文件列表项（不包含卡片外壳，便于搜索时局部刷新）
+// 渲染搜索进度面板 + 结果列表
+function renderSearchPanel() {
+    let html = '<div class="search-progress">';
+    html += '<div class="search-progress-info">';
+    html += '<span class="search-progress-count">🔍 ' + (searchActive ? '搜索中...' : (searchProgress.done ? '搜索完成' : '')) +
+        ' · 已扫描 ' + searchProgress.scanned + ' 项 · 找到 ' + searchResults.length + ' 个匹配</span>';
+    if (searchActive) {
+        html += '<button class="search-cancel" onclick="abortSearch()">⏹ 停止</button>';
+    }
+    html += '</div>';
+    html += '<div class="search-progress-bar"><div class="search-progress-fill ' +
+        (searchProgress.done ? 'done' : 'indeterminate') + '"></div></div>';
+    if (searchProgress.current_dir && searchActive) {
+        html += '<div class="search-progress-current">📂 ' + escapeHtml(searchProgress.current_dir) + '</div>';
+    }
+    if (searchProgress.done) {
+        html += '<div class="search-progress-current">' +
+            (searchProgress.truncated ? '⚠️ 结果过多，仅显示前 ' + searchResults.length + ' 项，请细化关键字' : '✅ 共扫描 ' + searchProgress.scanned + ' 项') +
+            '</div>';
+    }
+    html += '</div>';
+
+    if (searchResults.length === 0) {
+        if (searchProgress.done) {
+            html += '<div class="empty">🔍 未找到匹配 "' + escapeHtml(searchKeyword) + '" 的文件</div>';
+        } else {
+            html += '<div class="empty">⏳ 等待结果...</div>';
+        }
+    } else {
+        html += '<div class="search-meta">在 "' + escapeHtml(searchKeyword) + '" 中找到 ' + searchResults.length + ' 个结果</div>';
+        html += '<ul class="file-list">';
+        searchResults.forEach(file => {
+            const isFolder = file.is_directory;
+            const icon = isFolder ? '📁' : getFileIcon(file.name);
+            const iconClass = isFolder ? 'icon-folder' : 'icon-file';
+            const meta = isFolder ? '文件夹' : formatSize(file.size);
+            let actions = '';
+            if (isFolder) {
+                actions = '<button class="action-btn action-navigate" onclick="navigateTo(\'' + file.path + '\')">进入</button>';
+            } else {
+                actions = '<button class="action-btn action-download" onclick="downloadFile(\'' + file.path + '\')">下载</button>';
+            }
+            html += '<li class="file-item">' +
+                '<div class="file-info">' +
+                    '<div class="file-icon ' + iconClass + '">' + icon + '</div>' +
+                    '<div><div class="file-name">' + escapeHtml(file.name) + '</div>' +
+                    '<div class="file-rel">↳ ' + escapeHtml(file.rel_path || file.path) + '</div>' +
+                    '<div class="file-meta">' + meta + '</div></div>' +
+                '</div>' +
+                '<div class="file-actions">' + actions + '</div>' +
+            '</li>';
+        });
+        html += '</ul>';
+    }
+    return html;
+}
+
+// 渲染文件列表项（正常目录列表）
 function renderFileItems(files) {
     if (currentFiles.length === 0) {
         return '<div class="empty">📭 此目录为空</div>';
-    }
-    if (files.length === 0) {
-        return '<div class="empty">🔍 没有匹配 "' + escapeHtml(searchKeyword) + '" 的文件</div>';
     }
     let html = '<ul class="file-list">';
     files.forEach(file => {
@@ -562,41 +643,177 @@ function renderFileItems(files) {
     return html;
 }
 
-// 局部刷新文件列表（搜索时调用，避免整页重渲染导致闪烁）
-function refreshFileListContainer() {
-    const container = document.getElementById('fileListContainer');
-    if (!container) return;
-    const filtered = getFilteredFiles();
-    container.innerHTML = renderFileItems(filtered);
-    const countEl = document.getElementById('searchCount');
-    if (countEl) {
-        countEl.textContent = searchKeyword
-            ? '找到 ' + filtered.length + ' / ' + currentFiles.length + ' 个匹配项'
-            : '';
-    }
+// 局部刷新列表容器（搜索时调用，避免整页重渲染导致闪烁）
+let searchRenderPending = false;
+function refreshListContainer() {
+    if (searchRenderPending) return;
+    searchRenderPending = true;
+    requestAnimationFrame(() => {
+        searchRenderPending = false;
+        const container = document.getElementById('fileListContainer');
+        if (container) container.innerHTML = renderListContainer();
+    });
 }
 
 function setupSearch() {
     const input = document.getElementById('searchInput');
     if (!input) return;
     input.addEventListener('input', (e) => {
-        searchKeyword = e.target.value;
-        refreshFileListContainer();
+        const val = e.target.value;
+        searchKeyword = val;
+        const clearBtn = document.getElementById('searchClear');
+        if (clearBtn) clearBtn.classList.toggle('show', !!val);
+        // 清空时立即恢复目录列表，并取消正在进行的搜索
+        if (!val) {
+            abortSearch();
+            refreshListContainer();
+            return;
+        }
+        // 防抖：停止输入 600ms 后触发搜索
+        if (searchTimer) clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => startSearch(val), 600);
     });
-    // 按 Esc 清空搜索
     input.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            input.value = '';
-            searchKeyword = '';
-            refreshFileListContainer();
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
+            if (searchKeyword) startSearch(searchKeyword);
+        } else if (e.key === 'Escape') {
+            e.preventDefault();
+            clearSearch();
         }
     });
 }
 
-function toggleHidden(checked) { showHidden = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
-function toggleSystem(checked) { showSystem = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
-function showDrives() { currentPath = '/'; searchKeyword = ''; loadDrives(); }
-function navigateTo(path) { currentPath = path; searchKeyword = ''; loadFileList(path); }
+// 清除搜索（恢复目录列表）
+function clearSearch() {
+    abortSearch();
+    searchKeyword = '';
+    searchResults = [];
+    searchProgress = { scanned: 0, matched: 0, current_dir: '', done: false, truncated: false };
+    const input = document.getElementById('searchInput');
+    if (input) input.value = '';
+    const clearBtn = document.getElementById('searchClear');
+    if (clearBtn) clearBtn.classList.remove('show');
+    refreshListContainer();
+}
+
+// 取消正在进行的搜索请求
+function abortSearch() {
+    if (searchTimer) { clearTimeout(searchTimer); searchTimer = null; }
+    if (searchAbort) {
+        try { searchAbort.abort(); } catch(e) {}
+        searchAbort = null;
+    }
+    searchActive = false;
+}
+
+// 启动流式搜索
+async function startSearch(query) {
+    if (!query || currentPath === '/') return;
+    const myToken = ++searchToken;  // 本轮搜索的令牌
+    // 取消上一次搜索
+    abortSearch();
+    searchResults = [];
+    searchProgress = { scanned: 0, matched: 0, current_dir: '', done: false, truncated: false };
+    searchActive = true;
+    const input = document.getElementById('searchInput');
+    if (input) input.classList.add('searching');
+    refreshListContainer();
+
+    const controller = new AbortController();
+    searchAbort = controller;
+    const url = api('/api/search') + '?path=' + encodeURIComponent(currentPath) +
+        '&q=' + encodeURIComponent(query) +
+        '&show_hidden=' + (showHidden ? '1' : '0') +
+        '&show_system=' + (showSystem ? '1' : '0');
+
+    try {
+        const resp = await fetch(url, { signal: controller.signal, credentials: 'include' });
+        if (myToken !== searchToken) return;  // 已被新搜索取代
+        if (!resp.ok) {
+            const data = await resp.json().catch(() => ({}));
+            showToast('搜索失败：' + (data.error || resp.status));
+            searchActive = false;
+            searchProgress.done = true;
+            refreshListContainer();
+            return;
+        }
+
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (myToken !== searchToken) return;  // 已被新搜索取代，停止处理
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            // 按行解析 NDJSON
+            let idx;
+            while ((idx = buffer.indexOf('\n')) >= 0) {
+                const line = buffer.slice(0, idx).trim();
+                buffer = buffer.slice(idx + 1);
+                if (!line) continue;
+                let evt;
+                try { evt = JSON.parse(line); } catch(e) { continue; }
+                handleSearchEvent(evt, myToken);
+            }
+        }
+        // 处理剩余
+        if (buffer.trim() && myToken === searchToken) {
+            try { handleSearchEvent(JSON.parse(buffer.trim()), myToken); } catch(e) {}
+        }
+    } catch (err) {
+        if (myToken !== searchToken) return;  // 已被取代，静默退出
+        if (err.name === 'AbortError') {
+            // 用户主动取消，静默处理
+        } else {
+            showToast('搜索请求失败：网络错误');
+        }
+    } finally {
+        // 仅当本搜索仍是当前搜索时才更新最终状态
+        if (myToken === searchToken) {
+            searchActive = false;
+            searchProgress.done = true;
+            searchAbort = null;
+            const inp = document.getElementById('searchInput');
+            if (inp) inp.classList.remove('searching');
+            refreshListContainer();
+        }
+    }
+}
+
+// 处理单个搜索事件
+function handleSearchEvent(evt, myToken) {
+    if (!evt) return;
+    if (myToken !== undefined && myToken !== searchToken) return;  // 旧请求的事件，丢弃
+    if (evt.type === 'progress') {
+        searchProgress.scanned = evt.scanned || 0;
+        searchProgress.matched = evt.matched || 0;
+        searchProgress.current_dir = evt.current_dir || '';
+        refreshListContainer();
+    } else if (evt.type === 'match') {
+        if (evt.file) {
+            searchResults.push(evt.file);
+            searchProgress.matched = searchResults.length;
+            refreshListContainer();
+        }
+    } else if (evt.type === 'done') {
+        searchProgress.scanned = evt.scanned || 0;
+        searchProgress.matched = evt.matched || 0;
+        searchProgress.done = true;
+        searchProgress.truncated = !!evt.truncated;
+        refreshListContainer();
+    } else if (evt.type === 'error') {
+        showToast('搜索出错：' + (evt.error || ''));
+    }
+}
+
+function toggleHidden(checked) { showHidden = checked; if (currentPath === '/') { renderDrives(); return; } if (searchKeyword) { startSearch(searchKeyword); } else { loadFileList(currentPath); } }
+function toggleSystem(checked) { showSystem = checked; if (currentPath === '/') { renderDrives(); return; } if (searchKeyword) { startSearch(searchKeyword); } else { loadFileList(currentPath); } }
+function showDrives() { abortSearch(); currentPath = '/'; searchKeyword = ''; loadDrives(); }
+function navigateTo(path) { abortSearch(); currentPath = path; searchKeyword = ''; loadFileList(path); }
 
 function goUp() {
     if (currentPath === '/' || currentPath.length <= 1) { showDrives(); return; }
@@ -721,7 +938,10 @@ function uploadFile(file) {
         } else {
             completeTask(task.id, false);
         }
-        if (currentPath !== '/') { loadFileList(currentPath); }
+        if (currentPath !== '/') {
+            // 搜索进行中：上传到当前目录后刷新搜索结果；否则刷新目录列表
+            if (searchKeyword) { startSearch(searchKeyword); } else { loadFileList(currentPath); }
+        }
     };
 
     xhr.onerror = () => { completeTask(task.id, false); };
