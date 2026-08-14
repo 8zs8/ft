@@ -96,6 +96,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .qr-hint { font-size: 12px; opacity: 0.9; line-height: 1.5; }
 .back-btn { display: inline-flex; align-items: center; gap: 4px; padding: 6px 12px; background: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; color: #667eea; margin-right: 8px; }
 .back-btn:hover { background: #f0f3ff; }
+.search-bar { margin: 0 0 12px 0; }
+.search-input { width: 100%; padding: 10px 14px 10px 38px; border: 2px solid #dfe6e9; border-radius: 10px; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; font-family: inherit; background: #f8f9fa url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2395a5a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>") no-repeat 12px center; }
+.search-input:focus { border-color: #667eea; background-color: white; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
+.search-input::placeholder { color: #b2bec3; }
+.search-count { font-size: 12px; color: #95a5a6; margin: -6px 0 12px 4px; }
 .connection-lost { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(231, 76, 60, 0.95); color: white; display: none; align-items: center; justify-content: center; flex-direction: column; z-index: 9999; padding: 20px; text-align: center; }
 .connection-lost.show { display: flex; }
 .connection-lost h2 { font-size: 24px; margin-bottom: 16px; }
@@ -143,6 +148,8 @@ let showHidden = false;
 let showSystem = false;
 let tasks = [];
 let taskIdCounter = 0;
+let currentFiles = [];   // 当前目录文件列表缓存（供搜索过滤使用）
+let searchKeyword = '';  // 当前搜索关键字
 
 function showToast(msg) {
     const toast = document.createElement('div');
@@ -456,6 +463,7 @@ async function loadFileList(path) {
 }
 
 function renderFileList(data, path) {
+    currentFiles = data.files || [];
     let header = '<div class="header"><div class="header-top"><div><h1>📁 文件传输</h1><p>' + data.path + '</p></div><button class="logout-btn" onclick="logout()">🚪 退出</button></div>';
     header += renderConnectionInfo();
     header += '</div>';
@@ -491,51 +499,104 @@ function renderFileList(data, path) {
             '</div></div>';
     }
 
-    let fileListHtml = '<div class="card"><div style="display:flex; align-items:center; margin-bottom: 12px;"><button class="back-btn" onclick="goUp()">⬆️ 上级目录</button><h2 style="margin:0; flex:1;">📂 ' + (data.files.length > 0 ? data.files.length + ' 个项目' : '文件夹') + '</h2></div>';
+    let fileListHtml = '<div class="card"><div style="display:flex; align-items:center; margin-bottom: 12px;"><button class="back-btn" onclick="goUp()">⬆️ 上级目录</button><h2 style="margin:0; flex:1;">📂 ' + (currentFiles.length > 0 ? currentFiles.length + ' 个项目' : '文件夹') + '</h2></div>';
 
     if (data.permission_denied && data.permission_denied.length > 0) {
         fileListHtml += '<div class="permission-denied">⚠️ ' + data.permission_denied.length + ' 个项目因权限不足无法显示</div>';
     }
 
-    if (data.files.length === 0) {
-        fileListHtml += '<div class="empty">📭 此目录为空</div>';
-    } else {
-        fileListHtml += '<ul class="file-list">';
-        data.files.forEach(file => {
-            const isFolder = file.is_directory;
-            const icon = isFolder ? '📁' : getFileIcon(file.name);
-            const iconClass = isFolder ? 'icon-folder' : 'icon-file';
-            const meta = isFolder ? (file.item_count || 0) + ' 个项目' : formatSize(file.size);
-            let actions = '';
-            if (isFolder) {
-                actions = '<button class="action-btn action-navigate" onclick="navigateTo(\'' + file.path + '\')">进入</button>';
-            } else {
-                actions = '<button class="action-btn action-download" onclick="downloadFile(\'' + file.path + '\')">下载</button>';
-            }
-            fileListHtml += '<li class="file-item">' +
-                '<div class="file-info">' +
-                    '<div class="file-icon ' + iconClass + '">' + icon + '</div>' +
-                    '<div><div class="file-name">' + escapeHtml(file.name) + '</div>' +
-                    '<div class="file-meta">' + meta + '</div></div>' +
-                '</div>' +
-                '<div class="file-actions">' + actions + '</div>' +
-            '</li>';
-        });
-        fileListHtml += '</ul>';
+    // 搜索框（仅当有文件时显示）
+    if (currentFiles.length > 0) {
+        fileListHtml += '<div class="search-bar"><input type="text" id="searchInput" class="search-input" placeholder="搜索当前目录..." value="' + escapeHtml(searchKeyword) + '" autocomplete="off"></div>';
+        fileListHtml += '<div id="searchCount" class="search-count"></div>';
     }
+
+    fileListHtml += '<div id="fileListContainer">' + renderFileItems(getFilteredFiles()) + '</div>';
     fileListHtml += '</div>';
 
     document.getElementById('app').innerHTML = header + uploadArea + breadcrumb + optionsBar + fileListHtml + '<div id="taskList"></div>';
     if (!isRoot) {
         setupUpload();
     }
+    setupSearch();
     updateTaskList();
+}
+
+// 根据搜索关键字过滤文件列表
+function getFilteredFiles() {
+    if (!searchKeyword) return currentFiles;
+    const kw = searchKeyword.toLowerCase();
+    return currentFiles.filter(f => (f.name || '').toLowerCase().includes(kw));
+}
+
+// 渲染文件列表项（不包含卡片外壳，便于搜索时局部刷新）
+function renderFileItems(files) {
+    if (currentFiles.length === 0) {
+        return '<div class="empty">📭 此目录为空</div>';
+    }
+    if (files.length === 0) {
+        return '<div class="empty">🔍 没有匹配 "' + escapeHtml(searchKeyword) + '" 的文件</div>';
+    }
+    let html = '<ul class="file-list">';
+    files.forEach(file => {
+        const isFolder = file.is_directory;
+        const icon = isFolder ? '📁' : getFileIcon(file.name);
+        const iconClass = isFolder ? 'icon-folder' : 'icon-file';
+        const meta = isFolder ? (file.item_count || 0) + ' 个项目' : formatSize(file.size);
+        let actions = '';
+        if (isFolder) {
+            actions = '<button class="action-btn action-navigate" onclick="navigateTo(\'' + file.path + '\')">进入</button>';
+        } else {
+            actions = '<button class="action-btn action-download" onclick="downloadFile(\'' + file.path + '\')">下载</button>';
+        }
+        html += '<li class="file-item">' +
+            '<div class="file-info">' +
+                '<div class="file-icon ' + iconClass + '">' + icon + '</div>' +
+                '<div><div class="file-name">' + escapeHtml(file.name) + '</div>' +
+                '<div class="file-meta">' + meta + '</div></div>' +
+            '</div>' +
+            '<div class="file-actions">' + actions + '</div>' +
+        '</li>';
+    });
+    html += '</ul>';
+    return html;
+}
+
+// 局部刷新文件列表（搜索时调用，避免整页重渲染导致闪烁）
+function refreshFileListContainer() {
+    const container = document.getElementById('fileListContainer');
+    if (!container) return;
+    const filtered = getFilteredFiles();
+    container.innerHTML = renderFileItems(filtered);
+    const countEl = document.getElementById('searchCount');
+    if (countEl) {
+        countEl.textContent = searchKeyword
+            ? '找到 ' + filtered.length + ' / ' + currentFiles.length + ' 个匹配项'
+            : '';
+    }
+}
+
+function setupSearch() {
+    const input = document.getElementById('searchInput');
+    if (!input) return;
+    input.addEventListener('input', (e) => {
+        searchKeyword = e.target.value;
+        refreshFileListContainer();
+    });
+    // 按 Esc 清空搜索
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            input.value = '';
+            searchKeyword = '';
+            refreshFileListContainer();
+        }
+    });
 }
 
 function toggleHidden(checked) { showHidden = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
 function toggleSystem(checked) { showSystem = checked; if (currentPath === '/') renderDrives(); else loadFileList(currentPath); }
-function showDrives() { currentPath = '/'; loadDrives(); }
-function navigateTo(path) { currentPath = path; loadFileList(path); }
+function showDrives() { currentPath = '/'; searchKeyword = ''; loadDrives(); }
+function navigateTo(path) { currentPath = path; searchKeyword = ''; loadFileList(path); }
 
 function goUp() {
     if (currentPath === '/' || currentPath.length <= 1) { showDrives(); return; }

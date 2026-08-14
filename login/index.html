@@ -112,6 +112,7 @@ let dragStartX = 0;
 let pieceStartX = 0;
 let captchaVerified = false;  // 是否已通过验证
 let pendingLogin = false;      // 是否有待登录请求等待验证
+let isSubmitting = false;      // 是否正在提交登录请求（防止并发提交跳过人机验证）
 
 const bgCanvas = document.getElementById('puzzleBg');
 const bgCtx = bgCanvas.getContext('2d');
@@ -128,8 +129,13 @@ const captchaStatus = document.getElementById('captchaStatus');
 function generatePuzzle() {
     captchaVerified = false;
     puzzleCurrentX = 0;
+    // 重置滑块按钮样式（清除上次验证成功留下的绿色✓）
     sliderBtn.style.left = '0px';
+    sliderBtn.style.borderColor = '#667eea';
+    sliderBtn.style.color = '#667eea';
+    sliderBtn.textContent = '→';
     sliderFill.style.width = '0px';
+    sliderFill.style.background = 'linear-gradient(90deg, #667eea, #764ba2)';
     sliderHint.style.opacity = '1';
     captchaStatus.textContent = '';
     captchaStatus.className = 'captcha-status';
@@ -364,6 +370,8 @@ function updateLockDisplay() {
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (lockCountdown > 0) return;
+    if (isSubmitting) return;  // 正在提交登录请求，忽略重复提交
+    if (captchaModal.classList.contains('show')) return;  // 验证码模态框打开中，忽略
     const password = input.value;
     if (!password) return;
 
@@ -383,6 +391,9 @@ async function submitLogin() {
     const password = input.value;
     if (!password) return;
 
+    // 立即重置人机验证标记，防止在 fetch 期间用户按回车跳过下一次验证
+    captchaVerified = false;
+    isSubmitting = true;
     btn.disabled = true;
     btnSpinner.classList.add('show');
     errorBox.classList.remove('show');
@@ -412,6 +423,7 @@ async function submitLogin() {
                 errorBox.classList.add('show');
             }
             input.value = '';
+            captchaVerified = false;  // 登录失败，下次需要重新验证
             return;
         }
 
@@ -421,15 +433,19 @@ async function submitLogin() {
             errorBox.classList.add('show');
             input.value = '';
             input.focus();
+            captchaVerified = false;  // 登录失败，下次需要重新验证
             return;
         }
 
         errorBox.textContent = data.error || '登录失败，请重试';
         errorBox.classList.add('show');
+        captchaVerified = false;  // 登录失败，下次需要重新验证
     } catch (err) {
         errorBox.textContent = '网络错误，请检查服务器状态';
         errorBox.classList.add('show');
+        captchaVerified = false;  // 网络错误，下次需要重新验证
     } finally {
+        isSubmitting = false;
         if (lockCountdown === 0) {
             btn.disabled = false;
         }
