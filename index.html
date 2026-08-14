@@ -31,7 +31,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .file-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .icon-folder { background: #ffeaa7; }
 .icon-file { background: #dfe6e9; }
-.file-name { font-size: 14px; color: #2c3e50; word-break: break-all; }
+.file-name { font-size: 14px; color: #2c3e50; word-break: break-all; overflow-wrap: anywhere; }
+.file-rel { font-size: 11px; color: #95a5a6; margin-top: 2px; word-break: break-all; overflow-wrap: anywhere; line-height: 1.5; }
 .file-meta { font-size: 12px; color: #95a5a6; margin-top: 2px; }
 .file-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .action-btn { padding: 8px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
@@ -117,16 +118,16 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .search-cancel { background: #ffeaa7; color: #2d3436; border: none; padding: 3px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; }
 .search-cancel:hover { background: #fdcb6e; }
 .search-meta { font-size: 12px; color: #95a5a6; margin: -6px 0 12px 4px; }
-.search-rel { font-size: 11px; color: #95a5a6; margin-top: 2px; word-break: break-all; }
+.search-rel { font-size: 11px; color: #95a5a6; margin-top: 2px; word-break: break-all; overflow-wrap: anywhere; line-height: 1.5; }
 /* 远程控制按钮 */
 .remote-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; margin-left: 8px; }
 .remote-btn:hover { background: rgba(255,255,255,0.35); }
 /* 远程控制全屏弹窗 */
 .rc-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9000; display: none; align-items: center; justify-content: center; padding: 16px; }
 .rc-overlay.show { display: flex; }
-.rc-panel { background: white; border-radius: 16px; width: 100%; max-width: 920px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; }
+.rc-panel { background: white; border-radius: 16px; width: 100%; max-width: 920px; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; overflow: hidden; }
 @keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.rc-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; }
+.rc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; }
 .rc-title { font-size: 16px; font-weight: 600; color: #2c3e50; }
 .rc-close { background: none; border: none; font-size: 22px; color: #b2bec3; cursor: pointer; line-height: 1; }
 .rc-close:hover { color: #e74c3c; }
@@ -134,6 +135,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .rc-tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #95a5a6; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
 .rc-tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
 .rc-tab:hover:not(.active) { color: #2c3e50; }
+.rc-tab-close-mobile { display: none; }
 .rc-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
 .rc-tab-content { display: none; flex: 1; flex-direction: column; min-height: 0; }
 .rc-tab-content.active { display: flex; }
@@ -156,14 +158,34 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .desktop-btn.active { background: #667eea; color: white; border-color: #667eea; }
 .desktop-info { font-size: 11px; color: #95a5a6; margin-left: auto; }
 .desktop-view { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #2d3436; padding: 4px; min-height: 0; position: relative; }
-.desktop-screenshot { max-width: 100%; max-height: 100%; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; touch-action: none; pointer-events: auto; }
+.desktop-screenshot { width: 100%; height: 100%; object-fit: contain; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; touch-action: none; pointer-events: auto; }
 .desktop-screenshot.dragging { cursor: grabbing; }
 .desktop-loading { color: #b2bec3; font-size: 14px; }
 .desktop-rotate-hint { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #2d3436; color: #b2bec3; font-size: 16px; align-items: center; justify-content: center; flex-direction: column; text-align: center; z-index: 10; }
-/* 手机全屏 + 横屏 */
-@media (max-width: 768px) and (orientation: portrait) {
-    .rc-panel { max-width: 100%; max-height: 100vh; border-radius: 0; height: 100vh; }
-    .rc-overlay { padding: 0; }
+/* 手机全屏 + 右侧竖排标签 */
+@media (max-width: 768px) {
+    .rc-overlay { padding: 0; background: #000; }
+    .rc-panel { max-width: 100%; max-height: 100vh; width: 100vw; height: 100vh; border-radius: 0; flex-direction: row; animation: none; overflow: hidden; }
+    /* 隐藏桌面端头部，改用标签栏内的关闭按钮 */
+    .rc-header { display: none; }
+    /* 内容区占满左侧（除右侧 56px 标签栏外） */
+    .rc-body { order: 1; flex: 1; min-width: 0; min-height: 0; height: 100vh; overflow: hidden; }
+    /* 标签栏移到右侧，竖排，固定 56px 宽度挤满高度 */
+    .rc-tabs { order: 2; flex-direction: column; padding: 0; width: 56px; flex: 0 0 56px; height: 100vh; flex-shrink: 0; border-bottom: none; border-left: 1px solid #2d3436; background: #1e1e2e; justify-content: flex-start; align-items: stretch; }
+    .rc-tab { padding: 16px 4px; font-size: 11px; text-align: center; border-bottom: 1px solid #313244; border-left: 3px solid transparent; margin-bottom: 0; margin-left: -2px; writing-mode: vertical-rl; text-orientation: upright; line-height: 1.4; color: #a6accd; background: transparent; }
+    .rc-tab.active { border-bottom-color: #313244; border-left-color: #667eea; background: #667eea; color: white; }
+    /* 标签栏底部显示关闭按钮 */
+    .rc-tab-close-mobile { display: flex; align-items: center; justify-content: center; padding: 16px 4px; margin-top: auto; background: none; border: none; border-top: 1px solid #313244; font-size: 22px; color: #f38ba8; cursor: pointer; flex: 0 0 auto; }
+    .rc-tab-close-mobile:hover { color: #e74c3c; background: rgba(231,76,60,0.15); }
+    /* 隐藏工具栏，让截图区占满整个内容区 */
+    .desktop-toolbar { display: none; }
+    /* 截图区域占满，无内边距，黑色背景 */
+    .desktop-view { flex: 1; padding: 0; background: #000; min-height: 0; height: 100vh; }
+    /* 截图占满，无圆角无阴影，避免被压缩 */
+    .desktop-screenshot { width: 100%; height: 100%; object-fit: contain; border-radius: 0; box-shadow: none; cursor: crosshair; }
+    /* 终端区域占满 */
+    .term-output { flex: 1; min-height: 0; }
+    /* 竖屏时显示旋转提示 */
     .desktop-rotate-hint.show { display: flex; }
 }
 /* 协议弹窗 */
@@ -241,6 +263,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
         <div class="rc-tabs">
             <button class="rc-tab active" id="rcTabTerminal" onclick="switchRcTab('terminal')">⌨️ 命令终端</button>
             <button class="rc-tab" id="rcTabDesktop" onclick="switchRcTab('desktop')">🖱️ 远程桌面</button>
+            <button class="rc-tab-close-mobile" onclick="closeRemoteControl()">✕</button>
         </div>
         <div class="rc-body">
             <!-- 终端 -->
@@ -1082,8 +1105,9 @@ let rcAgreementChecked = false;  // 是否已检查过协议状态
 let termHistory = [];           // 命令历史
 let termHistoryIdx = -1;
 let termRunning = false;        // 终端是否有命令正在执行
-let desktopAutoRefresh = false;
-let desktopRefreshTimer = null;
+let desktopAutoRefresh = false;       // 桌面流是否激活
+let desktopRefreshTimer = null;      // 鼠标点击后的单次延迟刷新定时器
+let desktopRefreshing = false;       // 保留兼容（fetch 单帧模式用），MJPEG 流模式不再使用
 let desktopScreenWidth = 0;
 let desktopScreenHeight = 0;
 
@@ -1162,17 +1186,45 @@ function closeRemoteControl() {
     }
 }
 
-// 停止桌面实时刷新
+// 停止桌面实时刷新：中断 MJPEG 流连接，浏览器自动释放图像内存
 function stopDesktopRefresh() {
     if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
     desktopAutoRefresh = false;
+    const img = document.getElementById('screenshotImg');
+    if (img) {
+        img.onerror = null;     // 防止中断触发 onerror 弹协议
+        img.src = '';           // 设置空 src 中断 MJPEG 流
+        img.removeAttribute('src');
+    }
 }
 
-// 启动桌面实时刷新
+// 启动桌面实时刷新：直接绑定 MJPEG 流到 <img>，浏览器自动持续接收帧
 function startDesktopRefresh() {
     if (desktopAutoRefresh) return;
     desktopAutoRefresh = true;
-    refreshScreenshot();
+    const view = document.getElementById('desktopView');
+    const info = document.getElementById('desktopInfo');
+    if (info) info.textContent = '🔄 实时刷新中（24 FPS）...';
+    // 创建 img，src 指向 MJPEG 流；浏览器原生管理帧缓冲，无内存堆积
+    view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" alt="屏幕截图" draggable="false" ondragstart="return false">';
+    const img = document.getElementById('screenshotImg');
+    // 错误处理：仅在网络/权限错误时提示，不重复弹协议
+    img.onerror = function() {
+        if (!desktopAutoRefresh) return;  // 主动关闭导致，忽略
+        if (info) info.textContent = '❌ 实时流断开，请重试';
+    };
+    // 鼠标事件（PC 端）
+    img.addEventListener('click', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'click'); });
+    img.addEventListener('contextmenu', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'right'); });
+    img.addEventListener('dblclick', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'dblclick'); });
+    // 触摸事件（手机端）：阻止浏览器拖拽和长按菜单，映射为鼠标操作
+    img.addEventListener('touchstart', onTouchStart, { passive: false });
+    img.addEventListener('touchmove', onTouchMove, { passive: false });
+    img.addEventListener('touchend', onTouchEnd, { passive: false });
+    img.addEventListener('touchcancel', onTouchEnd, { passive: false });
+    // 启动 MJPEG 流（携带 cookie 跨域）
+    img.crossOrigin = 'use-credentials';
+    img.src = api('/api/mjpeg') + '?t=' + Date.now();
 }
 
 // 协议弹窗
@@ -1356,66 +1408,8 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ==================== 远程桌面鼠标控制 ====================
-let desktopPrevUrl = null;  // 上一帧截图 URL（用于释放）
-
-// 静默刷新截图：不显示加载文字，直接替换图片，实现无闪烁实时刷新
-async function refreshScreenshot() {
-    if (!rcAgreed) { showAgreement(); return; }
-    const view = document.getElementById('desktopView');
-    const info = document.getElementById('desktopInfo');
-    try {
-        const resp = await fetch(api('/api/screenshot') + '?t=' + Date.now(), { credentials: 'include' });
-        if (resp.status === 403) {
-            const data = await resp.json().catch(() => ({}));
-            if (data.need_agreement) { showAgreement(); return; }
-            if (view.querySelector('.desktop-loading') || !view.querySelector('.desktop-screenshot')) {
-                view.innerHTML = '<span class="desktop-loading">❌ 权限不足</span>';
-            }
-            return;
-        }
-        if (!resp.ok) {
-            if (!view.querySelector('.desktop-screenshot')) {
-                view.innerHTML = '<span class="desktop-loading">❌ 截屏失败</span>';
-            }
-            return;
-        }
-        desktopScreenWidth = parseInt(resp.headers.get('X-Screen-Width') || '0');
-        desktopScreenHeight = parseInt(resp.headers.get('X-Screen-Height') || '0');
-        const blob = await resp.blob();
-        const url = URL.createObjectURL(blob);
-        // 静默替换：直接更新 img 的 src，不重建 DOM，避免闪烁
-        let img = document.getElementById('screenshotImg');
-        if (img) {
-            img.src = url;  // 直接换 src，无闪烁
-        } else {
-            // 首次加载：创建图片元素
-            view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" src="' + url + '" alt="屏幕截图" draggable="false" ondragstart="return false">';
-            img = document.getElementById('screenshotImg');
-            // 鼠标事件（PC 端）
-            img.addEventListener('click', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'click'); });
-            img.addEventListener('contextmenu', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'right'); });
-            img.addEventListener('dblclick', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'dblclick'); });
-            // 触摸事件（手机端）：阻止浏览器拖拽和长按菜单，映射为鼠标操作
-            img.addEventListener('touchstart', onTouchStart, { passive: false });
-            img.addEventListener('touchmove', onTouchMove, { passive: false });
-            img.addEventListener('touchend', onTouchEnd, { passive: false });
-            img.addEventListener('touchcancel', onTouchEnd, { passive: false });
-        }
-        info.textContent = '🔄 实时刷新中 · ' + desktopScreenWidth + 'x' + desktopScreenHeight;
-        // 释放上一帧 URL
-        if (desktopPrevUrl) { URL.revokeObjectURL(desktopPrevUrl); }
-        desktopPrevUrl = url;
-    } catch(e) {
-        if (!view.querySelector('.desktop-screenshot')) {
-            view.innerHTML = '<span class="desktop-loading">❌ 网络错误</span>';
-        }
-    } finally {
-        // 继续实时刷新（1.5 秒间隔）
-        if (desktopAutoRefresh) {
-            desktopRefreshTimer = setTimeout(refreshScreenshot, 1500);
-        }
-    }
-}
+// 注：MJPEG 流模式下，截图刷新由 <img src="/api/mjpeg"> 自动持续接收，
+// 浏览器原生管理帧缓冲，无需 JS 轮询与 blob 释放，内存由浏览器自动回收。
 
 // ==================== 触摸事件（手机端鼠标模拟） ====================
 let touchStartX = 0, touchStartY = 0;
@@ -1496,10 +1490,8 @@ async function doMouseAction(clientX, clientY, action) {
             if (data.need_agreement) showAgreement();
             return;
         }
-        // 鼠标操作后立即刷新一帧（不影响实时刷新循环）
-        if (resp.ok && desktopAutoRefresh) {
-            setTimeout(refreshScreenshot, 200);
-        }
+        // MJPEG 流模式下，鼠标操作后无需手动刷新：
+        // 服务端下一帧（约 40ms 内）会自动推送反映鼠标变化的新截图
     } catch(err) { /* 忽略 */ }
 }
 
