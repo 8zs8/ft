@@ -1107,9 +1107,12 @@ let termHistoryIdx = -1;
 let termRunning = false;        // 终端是否有命令正在执行
 let desktopAutoRefresh = false;       // 桌面流是否激活
 let desktopRefreshTimer = null;      // 鼠标点击后的单次延迟刷新定时器
-let desktopRefreshing = false;       // 保留兼容（fetch 单帧模式用），MJPEG 流模式不再使用
+let desktopRefreshing = false;       // 防并发标志（fetch 单帧模式用）
 let desktopScreenWidth = 0;
 let desktopScreenHeight = 0;
+let desktopPrevUrl = null;            // 上一帧 blob URL（fetch 模式用，即时释放）
+let desktopMode = 'mjpeg';            // 当前模式：'mjpeg' 流式 / 'fetch' 单帧轮询
+let desktopFallbackTimer = null;     // MJPEG 加载超时检测定时器
 
 // 检测是否为移动设备
 function isMobile() {
@@ -1186,45 +1189,120 @@ function closeRemoteControl() {
     }
 }
 
-// 停止桌面实时刷新：中断 MJPEG 流连接，浏览器自动释放图像内存
+// 停止桌面实时刷新：中断 MJPEG 流或 fetch 轮询，释放内存
 function stopDesktopRefresh() {
     if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
+    if (desktopFallbackTimer) { clearTimeout(desktopFallbackTimer); desktopFallbackTimer = null; }
     desktopAutoRefresh = false;
+    desktopRefreshing = false;
     const img = document.getElementById('screenshotImg');
     if (img) {
+        img.onload = null;
         img.onerror = null;     // 防止中断触发 onerror 弹协议
         img.src = '';           // 设置空 src 中断 MJPEG 流
         img.removeAttribute('src');
     }
+    // 释放 fetch 模式残留的 blob URL
+    if (desktopPrevUrl) {
+        try { URL.revokeObjectURL(desktopPrevUrl); } catch(e) {}
+        desktopPrevUrl = null;
+    }
 }
 
-// 启动桌面实时刷新：直接绑定 MJPEG 流到 <img>，浏览器自动持续接收帧
+// 启动桌面实时刷新：优先 MJPEG 流（高帧率、浏览器原生内存管理）
+// 失败回退到 fetch 单帧轮询（Safari/被代理缓冲等场景的兼容回退）
 function startDesktopRefresh() {
     if (desktopAutoRefresh) return;
     desktopAutoRefresh = true;
-    const view = document.getElementById('desktopView');
+    desktopMode = 'mjpeg';
+    _initDesktopView();
+    const img = document.getElementById('screenshotImg');
+    if (!img) return;
     const info = document.getElementById('desktopInfo');
     if (info) info.textContent = '🔄 实时刷新中（24 FPS）...';
-    // 创建 img，src 指向 MJPEG 流；浏览器原生管理帧缓冲，无内存堆积
+    // onload 在 MJPEG 流接收第一帧时触发；若 5 秒未触发，判定为不支持/被代理缓冲，切换 fetch 模式
+    img.onload = function() {
+        if (desktopFallbackTimer) { clearTimeout(desktopFallbackTimer); desktopFallbackTimer = null; }
+    };
+    img.onerror = function() {
+        if (!desktopAutoRefresh) return;
+        _switchToFetchMode('❌ MJPEG 流加载失败，已切换兼容模式');
+    };
+    // 启动 MJPEG 流（携带 cookie 跨域）
+    img.crossOrigin = 'use-credentials';
+    img.src = api('/api/mjpeg') + '?t=' + Date.now();
+    // 5 秒超时检测：MJPEG 应在 1 秒内推送第一帧
+    desktopFallbackTimer = setTimeout(() => {
+        if (!desktopAutoRefresh) return;
+        if (!img.naturalWidth) {
+            _switchToFetchMode('⚠️ MJPEG 不支持，已切换兼容模式');
+        }
+    }, 5000);
+}
+
+// 创建 img 元素并绑定鼠标/触摸事件（两种模式共用）
+function _initDesktopView() {
+    const view = document.getElementById('desktopView');
     view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" alt="屏幕截图" draggable="false" ondragstart="return false">';
     const img = document.getElementById('screenshotImg');
-    // 错误处理：仅在网络/权限错误时提示，不重复弹协议
-    img.onerror = function() {
-        if (!desktopAutoRefresh) return;  // 主动关闭导致，忽略
-        if (info) info.textContent = '❌ 实时流断开，请重试';
-    };
-    // 鼠标事件（PC 端）
     img.addEventListener('click', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'click'); });
     img.addEventListener('contextmenu', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'right'); });
     img.addEventListener('dblclick', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'dblclick'); });
-    // 触摸事件（手机端）：阻止浏览器拖拽和长按菜单，映射为鼠标操作
     img.addEventListener('touchstart', onTouchStart, { passive: false });
     img.addEventListener('touchmove', onTouchMove, { passive: false });
     img.addEventListener('touchend', onTouchEnd, { passive: false });
     img.addEventListener('touchcancel', onTouchEnd, { passive: false });
-    // 启动 MJPEG 流（携带 cookie 跨域）
-    img.crossOrigin = 'use-credentials';
-    img.src = api('/api/mjpeg') + '?t=' + Date.now();
+}
+
+// 切换到 fetch 单帧轮询模式（Safari 不支持 multipart / cpolar 缓冲 MJPEG 的兼容回退）
+function _switchToFetchMode(reason) {
+    desktopMode = 'fetch';
+    if (desktopFallbackTimer) { clearTimeout(desktopFallbackTimer); desktopFallbackTimer = null; }
+    const img = document.getElementById('screenshotImg');
+    if (img) { img.onload = null; img.onerror = null; img.src = ''; }
+    const info = document.getElementById('desktopInfo');
+    if (info) info.textContent = reason;
+    refreshScreenshot();
+}
+
+// fetch 单帧轮询刷新（MJPEG 不支持时的兼容回退）
+// 严格内存管理：desktopPrevUrl 单帧引用 + 即时释放 + 防并发，无堆积
+async function refreshScreenshot() {
+    if (!rcAgreed) { showAgreement(); return; }
+    if (desktopMode !== 'fetch') return;
+    if (desktopRefreshing) return;
+    desktopRefreshing = true;
+    const info = document.getElementById('desktopInfo');
+    let newUrl = null;
+    try {
+        const resp = await fetch(api('/api/screenshot') + '?t=' + Date.now(), { credentials: 'include' });
+        if (resp.status === 403) {
+            const data = await resp.json().catch(() => ({}));
+            if (data.need_agreement) { showAgreement(); return; }
+            return;
+        }
+        if (!resp.ok) return;
+        desktopScreenWidth = parseInt(resp.headers.get('X-Screen-Width') || '0');
+        desktopScreenHeight = parseInt(resp.headers.get('X-Screen-Height') || '0');
+        const blob = await resp.blob();
+        newUrl = URL.createObjectURL(blob);
+        const img = document.getElementById('screenshotImg');
+        if (img) img.src = newUrl;
+        if (info) info.textContent = '🔄 兼容模式 · ' + desktopScreenWidth + 'x' + desktopScreenHeight;
+        const oldUrl = desktopPrevUrl;
+        desktopPrevUrl = newUrl;
+        if (oldUrl) { try { URL.revokeObjectURL(oldUrl); } catch(e) {} }
+        newUrl = null;
+    } catch(e) {
+        if (newUrl) { try { URL.revokeObjectURL(newUrl); } catch(e) {} newUrl = null; }
+    } finally {
+        desktopRefreshing = false;
+        if (desktopAutoRefresh && desktopMode === 'fetch') {
+            // fetch 模式帧率受网络限制：手机端 350ms / PC 端 250ms
+            const interval = isMobile() ? 350 : 250;
+            desktopRefreshTimer = setTimeout(refreshScreenshot, interval);
+        }
+    }
 }
 
 // 协议弹窗
@@ -1490,8 +1568,13 @@ async function doMouseAction(clientX, clientY, action) {
             if (data.need_agreement) showAgreement();
             return;
         }
-        // MJPEG 流模式下，鼠标操作后无需手动刷新：
-        // 服务端下一帧（约 40ms 内）会自动推送反映鼠标变化的新截图
+        // 刷新逻辑：
+        // - MJPEG 流模式：服务端下一帧（约 40ms 内）会自动推送反映鼠标变化的新截图，无需手动刷新
+        // - fetch 单帧模式：取消等待中的定时器立即触发一次新帧抓取，反映鼠标变化
+        if (resp.ok && desktopMode === 'fetch' && desktopAutoRefresh) {
+            if (desktopRefreshTimer) { clearTimeout(desktopRefreshTimer); desktopRefreshTimer = null; }
+            desktopRefreshTimer = setTimeout(refreshScreenshot, 200);
+        }
     } catch(err) { /* 忽略 */ }
 }
 
