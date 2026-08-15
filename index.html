@@ -1284,15 +1284,24 @@ async function refreshScreenshot() {
     if (desktopRefreshing) return;
     desktopRefreshing = true;
     const info = document.getElementById('desktopInfo');
+    const view = document.getElementById('desktopView');
     let newUrl = null;
     try {
         const resp = await fetch(api('/api/screenshot') + '?t=' + Date.now(), { credentials: 'include' });
         if (resp.status === 403) {
             const data = await resp.json().catch(() => ({}));
             if (data.need_agreement) { showAgreement(); return; }
+            if (info) info.textContent = '❌ 权限不足（403）';
             return;
         }
-        if (!resp.ok) return;
+        if (resp.status === 401) {
+            if (info) info.textContent = '❌ 未登录（401），请重新登录';
+            return;
+        }
+        if (!resp.ok) {
+            if (info) info.textContent = '❌ 截屏失败 HTTP ' + resp.status;
+            return;
+        }
         desktopScreenWidth = parseInt(resp.headers.get('X-Screen-Width') || '0');
         desktopScreenHeight = parseInt(resp.headers.get('X-Screen-Height') || '0');
         const blob = await resp.blob();
@@ -1306,6 +1315,7 @@ async function refreshScreenshot() {
         newUrl = null;
     } catch(e) {
         if (newUrl) { try { URL.revokeObjectURL(newUrl); } catch(e) {} newUrl = null; }
+        if (info) info.textContent = '❌ 网络错误：' + (e.message || e.name || '未知');
     } finally {
         desktopRefreshing = false;
         if (desktopAutoRefresh && desktopMode === 'fetch') {
