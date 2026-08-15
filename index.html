@@ -1217,11 +1217,11 @@ function startDesktopRefresh() {
     // 走 cpolar 隧道等反向代理时，MJPEG multipart 流会被缓冲导致严重延迟，直接用 fetch 模式
     // 直连（局域网/IP）时才尝试 MJPEG 流以获得 24 FPS 流畅体验
     const isThroughProxy = /cpolar|frp|ngrok|cloudflare|tunnel/i.test(API_BASE) || API_BASE.includes('.top');
+    const info = document.getElementById('desktopInfo');
     if (isThroughProxy) {
         desktopMode = 'fetch';
         _initDesktopView();
-        const info = document.getElementById('desktopInfo');
-        if (info) info.textContent = '🔄 实时刷新中（兼容模式）...';
+        if (info) info.textContent = '🔄 v3.1 兼容模式启动中...';
         refreshScreenshot();
         return;
     }
@@ -1229,8 +1229,7 @@ function startDesktopRefresh() {
     _initDesktopView();
     const img = document.getElementById('screenshotImg');
     if (!img) return;
-    const info = document.getElementById('desktopInfo');
-    if (info) info.textContent = '🔄 实时刷新中（24 FPS）...';
+    if (info) info.textContent = '🔄 v3.1 MJPEG 模式启动中（24 FPS）...';
     // onload 在 MJPEG 流接收第一帧时触发；若 2 秒未触发，判定为不支持/被代理缓冲，切换 fetch 模式
     img.onload = function() {
         if (desktopFallbackTimer) { clearTimeout(desktopFallbackTimer); desktopFallbackTimer = null; }
