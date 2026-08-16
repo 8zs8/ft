@@ -1119,8 +1119,16 @@ function isMobile() {
     return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || window.innerWidth <= 768;
 }
 
+// 检测微信内置浏览器（不支持 Fullscreen API 和 screen.orientation.lock，
+// 也无法通过 Web API 锁定横屏，只能让用户自行旋转或自适应竖屏使用）
+function isWeChatBrowser() {
+    return /MicroMessenger/i.test(navigator.userAgent);
+}
+
 // 进入全屏 + 锁定横屏
 async function enterFullscreenLandscape() {
+    // 微信内置浏览器不支持 Fullscreen API，调用会静默失败/抛异常，直接跳过
+    if (isWeChatBrowser()) return;
     const el = document.documentElement;
     try {
         if (el.requestFullscreen) await el.requestFullscreen();
@@ -1136,6 +1144,8 @@ async function enterFullscreenLandscape() {
 
 // 退出全屏 + 解锁横屏
 function exitFullscreenLandscape() {
+    // 微信内置浏览器未进入全屏，也无需退出
+    if (isWeChatBrowser()) return;
     try {
         if (screen.orientation && screen.orientation.unlock) screen.orientation.unlock();
     } catch(e) {}
@@ -1149,6 +1159,11 @@ function exitFullscreenLandscape() {
 function checkOrientation() {
     const hint = document.getElementById('desktopRotateHint');
     if (!hint) return;
+    // 微信内置浏览器无法锁定横屏，竖屏不阻断使用（否则用户陷入死锁：提示要横屏，但又锁不了横屏）
+    if (isWeChatBrowser()) {
+        hint.classList.remove('show');
+        return;
+    }
     const isPortrait = window.innerHeight > window.innerWidth;
     if (isMobile() && isPortrait && document.getElementById('rcContentDesktop').classList.contains('active')) {
         hint.classList.add('show');
