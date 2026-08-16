@@ -1154,6 +1154,38 @@ function checkOrientation() {
     }
 }
 
+// 键盘输入转发：只在远程桌面 tab 激活时，将按键转发到远程电脑
+function onDesktopKeyDown(e) {
+    const desktopContent = document.getElementById('rcContentDesktop');
+    if (!desktopContent || !desktopContent.classList.contains('active')) return;
+    // 阻止浏览器默认行为（Ctrl+W 关标签、F5 刷新等），让按键转发到远程
+    e.preventDefault();
+    const vk = e.keyCode || e.which || 0;
+    if (vk > 0) {
+        fetch(api('/api/keyboard'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+            body: JSON.stringify({ vk: vk, action: 'down' }),
+            credentials: 'include'
+        }).catch(() => {});
+    }
+}
+
+function onDesktopKeyUp(e) {
+    const desktopContent = document.getElementById('rcContentDesktop');
+    if (!desktopContent || !desktopContent.classList.contains('active')) return;
+    e.preventDefault();
+    const vk = e.keyCode || e.which || 0;
+    if (vk > 0) {
+        fetch(api('/api/keyboard'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
+            body: JSON.stringify({ vk: vk, action: 'up' }),
+            credentials: 'include'
+        }).catch(() => {});
+    }
+}
+
 // 打开远程控制（先检查协议）
 async function openRemoteControl() {
     document.getElementById('rcOverlay').classList.add('show');
@@ -1162,6 +1194,9 @@ async function openRemoteControl() {
         await enterFullscreenLandscape();
     }
     window.addEventListener('resize', checkOrientation);
+    // PC 端键盘输入转发（远程桌面 tab 激活时生效）
+    document.addEventListener('keydown', onDesktopKeyDown);
+    document.addEventListener('keyup', onDesktopKeyUp);
     // 检查协议状态
     if (!rcAgreementChecked) {
         try {
@@ -1180,6 +1215,9 @@ function closeRemoteControl() {
     document.getElementById('rcOverlay').classList.remove('show');
     stopDesktopRefresh();
     window.removeEventListener('resize', checkOrientation);
+    // 移除键盘输入转发
+    document.removeEventListener('keydown', onDesktopKeyDown);
+    document.removeEventListener('keyup', onDesktopKeyUp);
     // 手机端退出全屏
     if (isMobile()) {
         exitFullscreenLandscape();
@@ -1252,13 +1290,77 @@ function _initDesktopView() {
     const view = document.getElementById('desktopView');
     view.innerHTML = '<img class="desktop-screenshot" id="screenshotImg" alt="屏幕截图" draggable="false" ondragstart="return false">';
     const img = document.getElementById('screenshotImg');
-    img.addEventListener('click', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'click'); });
-    img.addEventListener('contextmenu', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'right'); });
-    img.addEventListener('dblclick', (e) => { e.preventDefault(); doMouseAction(e.clientX, e.clientY, 'dblclick'); });
+    // PC 端鼠标事件：down/up 分离实现拖拽与长按，move 实现拖拽中移动，wheel 实现滚轮
+    img.addEventListener('mousedown', onDesktopMouseDown);
+    img.addEventListener('mousemove', onDesktopMouseMove);
+    img.addEventListener('mouseup', onDesktopMouseUp);
+    img.addEventListener('mouseleave', onDesktopMouseLeave);
+    img.addEventListener('wheel', onDesktopWheel, { passive: false });
+    img.addEventListener('contextmenu', (e) => e.preventDefault());
+    img.addEventListener('dragstart', (e) => e.preventDefault());
+    // 触摸事件（手机端）
     img.addEventListener('touchstart', onTouchStart, { passive: false });
     img.addEventListener('touchmove', onTouchMove, { passive: false });
     img.addEventListener('touchend', onTouchEnd, { passive: false });
     img.addEventListener('touchcancel', onTouchEnd, { passive: false });
+}
+
+// PC 端鼠标拖拽/滚轮状态
+let desktopDragging = false;       // 是否有鼠标按键按下（拖拽中）
+let desktopDragButton = -1;        // 当前按下的按键：0=左, 1=中, 2=右
+let desktopLastMoveTime = 0;       // 上次 move 发送时间（节流）
+
+function onDesktopMouseDown(e) {
+    e.preventDefault();
+    // button: 0=左键, 1=中键, 2=右键
+    const actions = ['leftdown', 'middledown', 'rightdown'];
+    const action = actions[e.button];
+    if (action) {
+        desktopDragging = true;
+        desktopDragButton = e.button;
+        doMouseAction(e.clientX, e.clientY, action);
+    }
+}
+
+function onDesktopMouseMove(e) {
+    if (!desktopDragging) return;
+    e.preventDefault();
+    // 节流：拖拽中 30ms 内不重复发送 move，避免请求堆积
+    const now = Date.now();
+    if (now - desktopLastMoveTime < 30) return;
+    desktopLastMoveTime = now;
+    doMouseAction(e.clientX, e.clientY, 'move');
+}
+
+function onDesktopMouseUp(e) {
+    if (!desktopDragging) return;
+    e.preventDefault();
+    const actions = ['leftup', 'middleup', 'rightup'];
+    const action = actions[e.button];
+    if (action) {
+        doMouseAction(e.clientX, e.clientY, action);
+    }
+    desktopDragging = false;
+    desktopDragButton = -1;
+}
+
+function onDesktopMouseLeave(e) {
+    // 鼠标离开截图区时，若仍有按键按下，发送对应的 up 释放，防止按键卡住
+    if (desktopDragging) {
+        const actions = ['leftup', 'middleup', 'rightup'];
+        const action = actions[desktopDragButton];
+        if (action) {
+            doMouseAction(e.clientX, e.clientY, action);
+        }
+        desktopDragging = false;
+        desktopDragButton = -1;
+    }
+}
+
+function onDesktopWheel(e) {
+    e.preventDefault();
+    // e.deltaY > 0 向下滚动；mouse_event WHEEL 正值向上滚动，需取反
+    doMouseAction(e.clientX, e.clientY, 'wheel', -e.deltaY);
 }
 
 // 切换到 fetch 单帧轮询模式（Safari 不支持 multipart / cpolar 缓冲 MJPEG 的兼容回退）
@@ -1564,7 +1666,7 @@ function onTouchEnd(e) {
 }
 
 // 执行鼠标操作（统一入口，PC 和手机共用）
-async function doMouseAction(clientX, clientY, action) {
+async function doMouseAction(clientX, clientY, action, wheelDelta) {
     if (!rcAgreed) return;
     const img = document.getElementById('screenshotImg');
     if (!img) return;
@@ -1602,10 +1704,12 @@ async function doMouseAction(clientX, clientY, action) {
     const x = Math.max(0, Math.min(1, relX));
     const y = Math.max(0, Math.min(1, relY));
     try {
+        const reqBody = { action: action, x: x, y: y };
+        if (wheelDelta !== undefined) reqBody.delta = wheelDelta;
         const resp = await fetch(api('/api/mouse'), {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': getCsrfToken() },
-            body: JSON.stringify({ action: action, x: x, y: y }),
+            body: JSON.stringify(reqBody),
             credentials: 'include'
         });
         if (resp.status === 403) {
