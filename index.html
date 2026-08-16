@@ -123,20 +123,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .remote-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 8px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; transition: all 0.2s; white-space: nowrap; margin-left: 8px; }
 .remote-btn:hover { background: rgba(255,255,255,0.35); }
 /* 远程控制全屏弹窗 */
-.rc-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 9000; display: none; align-items: center; justify-content: center; padding: 16px; }
+.rc-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.85); z-index: 9000; display: none; align-items: stretch; justify-content: stretch; padding: 0; }
 .rc-overlay.show { display: flex; }
-.rc-panel { background: white; border-radius: 16px; width: 100%; max-width: 920px; height: 92vh; max-height: 92vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: modalIn 0.25s ease; overflow: hidden; }
+.rc-panel { background: #1e1e2e; border-radius: 0; width: 100vw; max-width: 100vw; height: 100vh; max-height: 100vh; display: flex; flex-direction: row; box-shadow: none; animation: none; overflow: hidden; }
 @keyframes modalIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-.rc-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; }
+.rc-header { display: none; }
 .rc-title { font-size: 16px; font-weight: 600; color: #2c3e50; }
 .rc-close { background: none; border: none; font-size: 22px; color: #b2bec3; cursor: pointer; line-height: 1; }
 .rc-close:hover { color: #e74c3c; }
-.rc-tabs { display: flex; gap: 0; padding: 0 20px; border-bottom: 2px solid #ecf0f1; flex-shrink: 0; }
-.rc-tab { padding: 10px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #95a5a6; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
-.rc-tab.active { color: #667eea; border-bottom-color: #667eea; font-weight: 600; }
-.rc-tab:hover:not(.active) { color: #2c3e50; }
-.rc-tab-close-mobile { display: none; }
-.rc-body { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
+.rc-tabs { order: 2; display: flex; flex-direction: column; gap: 0; padding: 0; width: 200px; flex: 0 0 200px; height: 100vh; flex-shrink: 0; border-bottom: none; border-left: 1px solid #313244; background: #1e1e2e; justify-content: flex-start; align-items: stretch; }
+.rc-tab { padding: 18px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #a6accd; border-bottom: 1px solid #313244; border-left: 3px solid transparent; margin: 0; transition: all 0.2s; text-align: left; }
+.rc-tab.active { color: #cdd6f4; border-left-color: #667eea; background: rgba(102,126,234,0.15); font-weight: 600; }
+.rc-tab:hover:not(.active) { color: #cdd6f4; background: rgba(255,255,255,0.05); }
+.rc-tab-close-mobile { display: flex; align-items: center; justify-content: center; padding: 18px 20px; margin-top: auto; background: none; border: none; border-top: 1px solid #313244; font-size: 20px; color: #f38ba8; cursor: pointer; flex: 0 0 auto; }
+.rc-tab-close-mobile:hover { color: #e74c3c; background: rgba(231,76,60,0.15); }
+.rc-body { order: 1; flex: 1; overflow: hidden; display: flex; flex-direction: column; min-width: 0; min-height: 0; height: 100vh; }
 .rc-tab-content { display: none; flex: 1; flex-direction: column; min-height: 0; }
 .rc-tab-content.active { display: flex; }
 /* 终端 */
@@ -152,40 +153,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Ping
 .term-send:hover { background: #b4befe; }
 .term-send:disabled { opacity: 0.5; cursor: not-allowed; }
 /* 远程桌面 */
-.desktop-toolbar { display: flex; gap: 8px; padding: 10px 12px; background: #f8f9fa; border-bottom: 1px solid #ecf0f1; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
+.desktop-toolbar { display: none; }
 .desktop-btn { padding: 6px 12px; background: white; border: 1px solid #dfe6e9; border-radius: 6px; cursor: pointer; font-size: 12px; color: #2c3e50; transition: all 0.2s; }
 .desktop-btn:hover { background: #667eea; color: white; border-color: #667eea; }
 .desktop-btn.active { background: #667eea; color: white; border-color: #667eea; }
 .desktop-info { font-size: 11px; color: #95a5a6; margin-left: auto; }
-.desktop-view { flex: 1; overflow: hidden; background: #2d3436; min-height: 0; position: relative; padding: 0; }
-.desktop-screenshot { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; object-fit: contain; cursor: crosshair; border-radius: 4px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; touch-action: none; pointer-events: auto; }
+.desktop-view { flex: 1; overflow: hidden; background: #000; min-height: 0; position: relative; padding: 0; }
+.desktop-screenshot { display: block; position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; object-fit: contain; cursor: crosshair; border-radius: 0; box-shadow: none; user-select: none; -webkit-user-drag: none; -webkit-touch-callout: none; touch-action: none; pointer-events: auto; }
 .desktop-screenshot.dragging { cursor: grabbing; }
 .desktop-loading { color: #b2bec3; font-size: 14px; }
 .desktop-rotate-hint { display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: #2d3436; color: #b2bec3; font-size: 16px; align-items: center; justify-content: center; flex-direction: column; text-align: center; z-index: 10; }
-/* 手机全屏 + 右侧竖排标签 */
+/* 手机端：右侧标签栏收窄为 56px，标签文字竖排 */
 @media (max-width: 768px) {
-    .rc-overlay { padding: 0; background: #000; }
-    .rc-panel { max-width: 100%; max-height: 100vh; width: 100vw; height: 100vh; border-radius: 0; flex-direction: row; animation: none; overflow: hidden; }
-    /* 隐藏桌面端头部，改用标签栏内的关闭按钮 */
-    .rc-header { display: none; }
-    /* 内容区占满左侧（除右侧 56px 标签栏外） */
-    .rc-body { order: 1; flex: 1; min-width: 0; min-height: 0; height: 100vh; overflow: hidden; }
-    /* 标签栏移到右侧，竖排，固定 56px 宽度挤满高度 */
-    .rc-tabs { order: 2; flex-direction: column; padding: 0; width: 56px; flex: 0 0 56px; height: 100vh; flex-shrink: 0; border-bottom: none; border-left: 1px solid #2d3436; background: #1e1e2e; justify-content: flex-start; align-items: stretch; }
-    .rc-tab { padding: 16px 4px; font-size: 11px; text-align: center; border-bottom: 1px solid #313244; border-left: 3px solid transparent; margin-bottom: 0; margin-left: -2px; writing-mode: vertical-rl; text-orientation: upright; line-height: 1.4; color: #a6accd; background: transparent; }
-    .rc-tab.active { border-bottom-color: #313244; border-left-color: #667eea; background: #667eea; color: white; }
-    /* 标签栏底部显示关闭按钮 */
-    .rc-tab-close-mobile { display: flex; align-items: center; justify-content: center; padding: 16px 4px; margin-top: auto; background: none; border: none; border-top: 1px solid #313244; font-size: 22px; color: #f38ba8; cursor: pointer; flex: 0 0 auto; }
-    .rc-tab-close-mobile:hover { color: #e74c3c; background: rgba(231,76,60,0.15); }
-    /* 隐藏工具栏，让截图区占满整个内容区 */
-    .desktop-toolbar { display: none; }
-    /* 截图区域占满，无内边距，黑色背景 */
-    .desktop-view { flex: 1; padding: 0; background: #000; min-height: 0; height: 100vh; }
-    /* 截图占满，无圆角无阴影，避免被压缩 */
-    .desktop-screenshot { width: 100%; height: 100%; object-fit: contain; border-radius: 0; box-shadow: none; cursor: crosshair; }
-    /* 终端区域占满 */
-    .term-output { flex: 1; min-height: 0; }
-    /* 竖屏时显示旋转提示 */
+    .rc-tabs { width: 56px; flex: 0 0 56px; }
+    .rc-tab { padding: 16px 4px; font-size: 11px; text-align: center; writing-mode: vertical-rl; text-orientation: upright; line-height: 1.4; }
+    .rc-tab-close-mobile { padding: 16px 4px; font-size: 22px; }
     .desktop-rotate-hint.show { display: flex; }
 }
 /* 协议弹窗 */
