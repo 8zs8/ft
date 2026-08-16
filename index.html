@@ -1572,8 +1572,36 @@ async function doMouseAction(clientX, clientY, action) {
     const img = document.getElementById('screenshotImg');
     if (!img) return;
     const rect = img.getBoundingClientRect();
-    const relX = (clientX - rect.left) / rect.width;
-    const relY = (clientY - rect.top) / rect.height;
+    // 关键：CSS 使用 object-fit: contain，图片在 <img> 盒子内保持宽高比居中缩放，
+    // 会在某一方向留黑边。必须用 naturalWidth/naturalHeight 计算图片实际显示区域，
+    // 否则点击坐标会整体偏移（PC 端容器比例与屏幕比例不同时尤为明显）。
+    let relX, relY;
+    const nw = img.naturalWidth || 0;
+    const nh = img.naturalHeight || 0;
+    if (nw > 0 && nh > 0 && rect.width > 0 && rect.height > 0) {
+        const boxRatio = rect.width / rect.height;
+        const imgRatio = nw / nh;
+        let displayW, displayH, offsetX, offsetY;
+        if (boxRatio > imgRatio) {
+            // 盒子更宽：图片高度填满，左右留黑边
+            displayH = rect.height;
+            displayW = rect.height * imgRatio;
+            offsetX = (rect.width - displayW) / 2;
+            offsetY = 0;
+        } else {
+            // 盒子更高：图片宽度填满，上下留黑边
+            displayW = rect.width;
+            displayH = rect.width / imgRatio;
+            offsetX = 0;
+            offsetY = (rect.height - displayH) / 2;
+        }
+        relX = (clientX - rect.left - offsetX) / displayW;
+        relY = (clientY - rect.top - offsetY) / displayH;
+    } else {
+        // 图片尚未加载，回退到简单映射
+        relX = (clientX - rect.left) / rect.width;
+        relY = (clientY - rect.top) / rect.height;
+    }
     const x = Math.max(0, Math.min(1, relX));
     const y = Math.max(0, Math.min(1, relY));
     try {
